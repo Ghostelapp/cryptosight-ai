@@ -1,0 +1,50 @@
+{
+  "name": "CryptoSight AI",
+  "version": "1.2.0-rc.1",
+  "validation": {
+    "unit_integration_passed": 49,
+    "live_tests_skipped": 3,
+    "strict_typescript": "passed",
+    "production_build": "passed",
+    "standalone_http_security_smoke": "passed",
+    "contracts": "passed",
+    "production_dependency_audit_known_vulnerabilities": 0,
+    "synthetic_gateway_symbols": 51,
+    "synthetic_transport_p95_ms": 1,
+    "production_wallet_http_flow": "passed",
+    "browser_scenarios_discovered": 9,
+    "mobile_browser_execution": "blocked: Chromium executable unavailable",
+    "production_admin_http_flow": "passed"
+  },
+  "unverified": [
+    "live exchange access and end-to-end latency",
+    "browser E2E and visual QA: Chromium download unavailable",
+    "Docker/PostgreSQL/Redis deployment and restore",
+    "credential-dependent external integrations"
+  ],
+  "automatic_exchange_execution": false,
+  "wallet_auth": {
+    "protocol": "EIP-4361",
+    "scope": "injected EVM EOA, EIP-1193/EIP-6963",
+    "actions": [
+      "register",
+      "login",
+      "link",
+      "unlink"
+    ],
+    "mfa": "TOTP enforced",
+    "smart_contract_wallets": false
+  },
+  "administration": {
+    "roles": [
+      "user",
+      "admin"
+    ],
+    "shared_ai_agents": true,
+    "encrypted_write_only_keys": true,
+    "account_suspension": true,
+    "persisted_ai_limits_and_pause": true,
+    "audit_log": true,
+    "bootstrap": "server-only existing-account UUID"
+  }
+}

@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cryptosight.local/schema/analysis.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "symbol": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timeframe": {
+      "type": "string",
+      "enum": [
+        "1m",
+        "3m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "4h",
+        "6h",
+        "12h",
+        "1d",
+        "1w",
+        "1M"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "market_regime": {
+      "type": "string",
+      "enum": [
+        "trending",
+        "ranging",
+        "volatile",
+        "breakout"
+      ]
+    },
+    "bias": {
+      "type": "string",
+      "enum": [
+        "bullish",
+        "bearish",
+        "neutral"
+      ]
+    },
+    "confidence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "key_levels": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "support": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "resistance": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "liquidity_zones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "low": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "high": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "low",
+              "high"
+            ]
+          }
+        }
+      },
+      "required": [
+        "support",
+        "resistance",
+        "liquidity_zones"
+      ]
+    },
+    "setups": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "LONG",
+                  "SHORT"
+                ]
+              },
+              "entry": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "market",
+                      "limit",
+                      "stop"
+                    ]
+                  },
+                  "price": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "zone": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "type",
+                  "price",
+                  "zone"
+                ]
+              },
+              "stop_loss": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "take_profits": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 5,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "price": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "probability": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "size_pct": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 100
+                    }
+                  },
+                  "required": [
+                    "price",
+                    "probability",
+                    "size_pct"
+                  ]
+                }
+              },
+              "risk_reward": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "invalidation": {
+                "type": "string",
+                "minLength": 1
+              },
+              "timing": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reasoning": {
+                "type": "string",
+                "minLength": 1
+              },
+              "time_horizon": {
+                "type": "string",
+                "enum": [
+                  "scalp",
+                  "intraday",
+                  "swing"
+                ]
+              },
+              "trigger": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "price_touch",
+                      "candle_close_above",
+                      "candle_close_below"
+                    ]
+                  },
+                  "price": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "timeframe": {
+                    "type": "string",
+                    "enum": [
+                      "1m",
+                      "3m",
+                      "5m",
+                      "15m",
+                      "30m",
+                      "1h",
+                      "2h",
+                      "4h",
+                      "6h",
+                      "12h",
+                      "1d",
+                      "1w",
+                      "1M"
+                    ]
+                  }
+                },
+                "required": [
+                  "type",
+                  "price",
+                  "timeframe"
+                ]
+              }
+            },
+            "required": [
+              "direction",
+              "entry",
+              "stop_loss",
+              "take_profits",
+              "risk_reward",
+              "invalidation",
+              "timing",
+              "reasoning",
+              "time_horizon",
+              "trigger"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "NO_TRADE"
+                ]
+              },
+              "reasoning": {
+                "type": "string",
+                "minLength": 1
+              },
+              "invalidation": {
+                "type": "string",
+                "minLength": 1
+              },
+              "timing": {
+                "type": "string",
+                "minLength": 1
+              },
+              "time_horizon": {
+                "type": "string",
+                "enum": [
+                  "scalp",
+                  "intraday",
+                  "swing"
+                ]
+              }
+            },
+            "required": [
+              "direction",
+              "reasoning",
+              "invalidation",
+              "timing",
+              "time_horizon"
+            ]
+          }
+        ]
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "extreme"
+          ]
+        },
+        "factors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "volatility_note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_risk": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "level",
+        "factors",
+        "volatility_note",
+        "event_risk"
+      ]
+    },
+    "scenarios": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bull_case": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bear_case": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_case": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "bull_case",
+        "bear_case",
+        "base_case"
+      ]
+    },
+    "summary_short": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary_detailed": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "symbol",
+    "timeframe",
+    "timestamp",
+    "market_regime",
+    "bias",
+    "confidence",
+    "key_levels",
+    "setups",
+    "risk",
+    "scenarios",
+    "summary_short",
+    "summary_detailed"
+  ]
+}

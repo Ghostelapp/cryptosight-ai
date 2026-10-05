@@ -1,0 +1,113 @@
+x-app: &app
+  build:
+    context: .
+    args:
+      NEXT_PUBLIC_GATEWAY_URL: ${NEXT_PUBLIC_GATEWAY_URL:-}
+  image: cryptosight-ai:local
+  environment: &environment
+    NODE_ENV: production
+    DATABASE_URL: postgresql://cryptosight_app:${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}@postgres:5432/cryptosight
+    REDIS_URL: redis://redis:6379
+    PROJECT_ROOT: /app
+    APP_ORIGIN: "${APP_ORIGIN:-}"
+    SESSION_SECRET: "${SESSION_SECRET:-}"
+    WALLET_CHAIN_IDS: "${WALLET_CHAIN_IDS:-1,8453,137,42161,10,43114,56,84532,11155111}"
+    BYOK_KEY_ID: "${BYOK_KEY_ID:-primary}"
+    BYOK_ENCRYPTION_KEY: "${BYOK_ENCRYPTION_KEY:-}"
+    NEXT_PUBLIC_GATEWAY_URL: "${NEXT_PUBLIC_GATEWAY_URL:-}"
+    FREE_DAILY_LIMIT: "${FREE_DAILY_LIMIT:-10}"
+    PRO_DAILY_LIMIT: "${PRO_DAILY_LIMIT:-100}"
+    FREE_DAILY_BUDGET_USD: "${FREE_DAILY_BUDGET_USD:-5}"
+    PRO_DAILY_BUDGET_USD: "${PRO_DAILY_BUDGET_USD:-20}"
+    ANALYSIS_RESERVATION_USD: "${ANALYSIS_RESERVATION_USD:-0.5}"
+    MODEL_PRICING_JSON: "${MODEL_PRICING_JSON:-{}}"
+    SMTP_URL: "${SMTP_URL:-}"
+    EMAIL_FROM: "${EMAIL_FROM:-}"
+    GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+    GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+    NEWS_RSS_URL: "${NEWS_RSS_URL:-}"
+    CALENDAR_API_URL: "${CALENDAR_API_URL:-}"
+    CALENDAR_API_KEY: "${CALENDAR_API_KEY:-}"
+    TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
+    VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
+    VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
+    VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:admin@example.com}"
+    STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-}"
+    STRIPE_PRICE_ID: "${STRIPE_PRICE_ID:-}"
+    STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
+    LOCAL_LLM_URL: "${LOCAL_LLM_URL:-}"
+    LOCAL_LLM_ALLOWED_HOSTS: "${LOCAL_LLM_ALLOWED_HOSTS:-localhost,127.0.0.1,ollama}"
+    LOCAL_LLM_KEY: "${LOCAL_LLM_KEY:-}"
+    SENTRY_DSN: "${SENTRY_DSN:-}"
+    ONCHAIN_API_URL: "${ONCHAIN_API_URL:-}"
+    ONCHAIN_API_KEY: "${ONCHAIN_API_KEY:-}"
+    SENTIMENT_API_URL: "${SENTIMENT_API_URL:-}"
+    SENTIMENT_API_KEY: "${SENTIMENT_API_KEY:-}"
+    LIQUIDATIONS_API_URL: "${LIQUIDATIONS_API_URL:-}"
+    LIQUIDATIONS_API_KEY: "${LIQUIDATIONS_API_KEY:-}"
+  restart: unless-stopped
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cryptosight_admin
+      POSTGRES_DB: cryptosight
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD}
+    volumes: ["pgdata:/var/lib/postgresql/data", "./db/bootstrap:/docker-entrypoint-initdb.d:ro"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cryptosight_admin -d cryptosight"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    volumes: ["redisdata:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  migrate:
+    <<: *app
+    command: ["node", "scripts/migrate.mjs"]
+    environment:
+      <<: *environment
+      DATABASE_URL: postgresql://cryptosight_admin:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/cryptosight
+    restart: "no"
+    depends_on:
+      postgres: {condition: service_healthy}
+  web:
+    <<: *app
+    environment:
+      <<: *environment
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+  gateway:
+    <<: *app
+    command: ["node", "services/gateway/index.mjs"]
+    ports: ["127.0.0.1:3001:3001"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+  worker:
+    <<: *app
+    command: ["node", "services/worker/index.mjs"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+volumes:
+  pgdata:
+  redisdata:

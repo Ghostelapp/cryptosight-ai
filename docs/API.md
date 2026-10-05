@@ -1,0 +1,17 @@
+# API and sockets
+
+`packages/contracts/openapi.json` documents 75 paths and 95 implemented operations. Run `python3 scripts/generate-contracts.py` to regenerate it and the executable route manifest. `analysis.schema.json` is authoritative for validated LLM output; its component is embedded into OpenAPI with local definitions resolved. SQL numeric fields may serialize as decimal strings; the terminal converts them deliberately. Generic row responses permit migration-defined fields and are not strict DTO promises.
+
+Base URL `/api/v1`. Public market reads and risk POST are throttled. Private routes require the session cookie. First fetch `/auth/me` and keep its `csrfToken` in memory; mutations send `x-csrf-token`, JSON content type and an exact `APP_ORIGIN` Origin. Analysis/scanner/paper-order writes also require an `idempotency-key` (8–150 characters). Unknown routes/methods fail without executing dispatch logic. Development cookie is `cryptosight`; production is Secure, HttpOnly, SameSite=Lax `__Host-cryptosight`.
+
+Analysis POST returns 202 with an ID/status, conservative reservation and `cost_type`. Poll `GET /analyses/{id}`. Only completed validated output is rendered. Provider failures return a safe error code/request ID, never exception body or credentials. `NO_TRADE` deliberately contains no invented numeric entry/SL/TP. LONG/SHORT have a validated machine trigger in addition to localized prose.
+
+Gateway listens on `GATEWAY_PORT` (default 3001). Send `{"type":"subscribe","venue":"binance","market":"spot","symbol":"BTCUSDT","timeframe":"1h"}` (or `instrument` plus `timeframe`). It emits candle/status events with a subscription ID, sequence and payload, and classified order-flow events. Send unsubscribe for the same instrument. Limits: 8 subscriptions/client, 20 connections/IP, 500 upstream instrument/timeframe keys, bounded payloads and backpressure close.
+
+For drawing sync, obtain `POST /ws-ticket`, open the gateway with `?ticket=...` in the WebSocket URL; the server consumes that ticket during upgrade. Tickets expire in 30 seconds and are single-use. See the gateway and chart implementation for exact sync envelopes. PostgreSQL/Redis are required for this cross-process capability. Public market sockets never carry API keys.
+
+Optional data URLs are operator-configured HTTPS endpoints, not arbitrary user URLs. Calendar input is a JSON array with `title`, ISO `timestamp`, `impact` (`low|medium|high`) and optional `country`. Inspect the Zod schemas in `packages/market/optional.mjs` for normalized on-chain/sentiment/liquidation JSON. Binance portfolio import validates that the key lacks trading permissions and only requests read endpoints; no orders are placed.
+
+Wallet proof paths are public only for registration/login. Their link/unlink purpose requires a current session and CSRF token. Google MFA completion and resend-verification routes are documented in OpenAPI. Details: `WALLET-AUTH.md`.
+
+Administration routes require a current `role=admin` session. For admin mutations with account 2FA enabled, include `totp` alongside the request fields. Agent `apiKey` is write-only; admin and user catalogs never return encrypted envelopes. Optional `agentId` on AI requests selects a managed server-side provider/model; user tier, enabled state and configuration version are checked again by workers. See [ADMIN.md](ADMIN.md).
