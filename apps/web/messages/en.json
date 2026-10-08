@@ -382,5 +382,14 @@
   "refresh": "Refresh",
   "adminDescription": "Description",
   "adminSearch": "Search",
-  "invalid_admin_request": "Invalid administration request."
+  "invalid_admin_request": "Invalid administration request.",
+  "paperProfitFactor": "Profit factor",
+  "paperRefresh": "Refreshes every 10 seconds while visible. PnL includes entry and estimated exit fees; execution uses order-book liquidity.",
+  "paperMissingQuotes": "Some prices are unavailable. Account valuation is incomplete.",
+  "paperOpenPositions": "Open positions",
+  "paperHistory": "Trade history",
+  "paperHistoryLimit": "Latest 200 closed trades. Statistics cover the entire account history.",
+  "paperExit": "Exit price",
+  "paperEstimate": "Estimated collateral + entry fee",
+  "paperFee": "0.1% fee per side; actual fill may differ"
 }

@@ -382,5 +382,14 @@
   "refresh": "Aktualisieren",
   "adminDescription": "Beschreibung",
   "adminSearch": "Suchen",
-  "invalid_admin_request": "Ungültige Administrationsanfrage."
+  "invalid_admin_request": "Ungültige Administrationsanfrage.",
+  "paperProfitFactor": "Profitfaktor",
+  "paperRefresh": "Aktualisierung alle 10 Sekunden bei sichtbarem Panel. PnL enthält Einstiegs- und geschätzte Ausstiegsgebühren; Ausführung anhand des Orderbuchs.",
+  "paperMissingQuotes": "Einige Kurse fehlen. Die Kontobewertung ist unvollständig.",
+  "paperOpenPositions": "Offene Positionen",
+  "paperHistory": "Handelshistorie",
+  "paperHistoryLimit": "Letzte 200 geschlossene Trades. Statistiken umfassen die gesamte Kontohistorie.",
+  "paperExit": "Ausstiegspreis",
+  "paperEstimate": "Geschätzte Sicherheit + Einstiegsgebühr",
+  "paperFee": "0,1% Gebühr pro Seite; tatsächlicher Ausführungskurs kann abweichen"
 }

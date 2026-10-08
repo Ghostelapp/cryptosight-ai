@@ -382,5 +382,14 @@
   "refresh": "Odśwież",
   "adminDescription": "Opis",
   "adminSearch": "Szukaj",
-  "invalid_admin_request": "Nieprawidłowe dane żądania administracyjnego."
+  "invalid_admin_request": "Nieprawidłowe dane żądania administracyjnego.",
+  "paperProfitFactor": "Profit factor",
+  "paperRefresh": "Odświeżanie co 10 sekund, gdy panel jest widoczny. PnL uwzględnia prowizję wejścia i szacowaną prowizję wyjścia; realizacja korzysta z księgi zleceń.",
+  "paperMissingQuotes": "Część cen jest niedostępna. Wycena konta jest niepełna.",
+  "paperOpenPositions": "Otwarte pozycje",
+  "paperHistory": "Historia transakcji",
+  "paperHistoryLimit": "Ostatnie 200 zamkniętych transakcji. Statystyki obejmują całą historię konta.",
+  "paperExit": "Cena wyjścia",
+  "paperEstimate": "Szacowany depozyt + prowizja wejścia",
+  "paperFee": "Prowizja 0,1% na stronę; rzeczywista cena realizacji może się różnić"
 }

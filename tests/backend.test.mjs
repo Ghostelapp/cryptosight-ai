@@ -332,6 +332,13 @@ test("paper short close safely settles a gap beyond collateral and cannot settle
     assert.equal(+account.account.balance, 8999);
     assert.equal(+account.orders[0].pnl, -1001);
     assert.equal(account.orders[0].status, "closed");
+    assert.equal(account.stats.closedTrades, 1);
+    assert.equal(account.stats.realizedPnl, -1001);
+    assert.equal(account.stats.winRate, 0);
+    assert.equal(account.stats.profitFactor, 0);
+    assert.equal(account.stats.openPositions, 0);
+    assert.equal(account.stats.unrealizedPnl, 0);
+    assert.equal(account.equity, 8999);
     assert.equal(
       (
         await request("paper-close/" + entry.data.id, {

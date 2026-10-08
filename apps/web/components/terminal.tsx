@@ -465,7 +465,13 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     setRecords([]);
     refreshRecords().catch((e: any) => error(e.message));
     const timer = setInterval(() => {
-      if (tab === "track" || tab === "alerts" || tab === "backtest")
+      if (
+        document.visibilityState === "visible" &&
+        (tab === "paper" ||
+          tab === "track" ||
+          tab === "alerts" ||
+          tab === "backtest")
+      )
         refreshRecords().catch(() => {});
     }, 10000);
     return () => clearInterval(timer);
@@ -2059,7 +2065,18 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                   {tab === "journal" && (
                     <>
                       <div className="stats-grid">
-                        {stat(t("trades"), records.length)}
+                        {stat(
+                          t("trades"),
+                          paperOverviewData?.stats?.closedTrades ?? 0,
+                        )}
+                        {stat(
+                          t("winRate"),
+                          fmt(paperOverviewData?.stats?.winRate) + "%",
+                        )}
+                        {stat(
+                          t("paperProfitFactor"),
+                          fmt(paperOverviewData?.stats?.profitFactor),
+                        )}
                         {stat(
                           t("pnl"),
                           fmt(
@@ -2258,6 +2275,12 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                   {tab === "paper" && (
                     <>
                       <div className="event-notice">{t("paperHint")}</div>
+                      <p className="muted">{t("paperRefresh")}</p>
+                      {paperOverviewData && !paperOverviewData.complete && (
+                        <div className="event-notice">
+                          {t("paperMissingQuotes")}
+                        </div>
+                      )}
                       {paperOverviewData && (
                         <>
                           <div className="stats-grid">
@@ -2285,12 +2308,21 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                       )}
                       <div className="stats-grid">
                         {stat(t("balance"), fmt(paperAccount?.balance))}
-                        {stat(t("trades"), records.length)}
+                        {stat(
+                          t("trades"),
+                          paperOverviewData?.stats?.closedTrades ?? 0,
+                        )}
+                        {stat(
+                          t("winRate"),
+                          fmt(paperOverviewData?.stats?.winRate) + "%",
+                        )}
+                        {stat(
+                          t("paperProfitFactor"),
+                          fmt(paperOverviewData?.stats?.profitFactor),
+                        )}
                         {stat(
                           t("pnl"),
-                          fmt(
-                            records.reduce((s, r) => s + Number(r.pnl || 0), 0),
-                          ),
+                          fmt(paperOverviewData?.stats?.realizedPnl),
                         )}
                       </div>
                       <div className="form-card">
@@ -2321,6 +2353,15 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                             />
                           </Field>
                         </div>
+                        <p className="muted">
+                          {t("paperEstimate")}:{" "}
+                          {fmt(
+                            paperQuantity *
+                              (price || ticker?.price || 0) *
+                              1.001,
+                          )}{" "}
+                          USDT · {t("paperFee")}
+                        </p>
                         <Button
                           onClick={() =>
                             perform("paper", async () => {
@@ -2343,40 +2384,73 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                           {t("simulate")}
                         </Button>
                       </div>
+                      <h3>{t("paperOpenPositions")}</h3>
                       {table(
                         [
                           t("symbol"),
                           t("direction"),
                           t("quantity"),
                           t("entry"),
+                          t("price"),
                           t("pnl"),
-                          t("status"),
                           t("closePosition"),
                         ],
-                        records.map((r) => [
-                          r.symbol,
-                          r.direction,
-                          fmt(r.quantity, 5),
-                          fmt(r.fill_price),
-                          r.pnl == null ? "—" : fmt(r.pnl),
-                          t.has(r.status) ? t(r.status) : r.status,
-                          !r.closed_at && (
-                            <Button
-                              variant="outline"
-                              onClick={() =>
-                                perform("close", async () => {
-                                  await api("paper-close/" + r.id, {
-                                    method: "POST",
-                                    body: {},
-                                  });
-                                  await refreshRecords();
-                                })
-                              }
-                            >
-                              {t("close")}
-                            </Button>
-                          ),
-                        ]),
+                        records
+                          .filter((r) => !r.closed_at)
+                          .map((r) => [
+                            r.symbol,
+                            r.direction,
+                            fmt(r.quantity, 5),
+                            fmt(r.fill_price),
+                            fmt(
+                              paperOverviewData?.exposure?.find(
+                                (o: any) => o.id === r.id,
+                              )?.mark,
+                            ),
+                            fmt(
+                              paperOverviewData?.exposure?.find(
+                                (o: any) => o.id === r.id,
+                              )?.unrealizedPnl,
+                            ),
+                            !r.closed_at && (
+                              <Button
+                                variant="outline"
+                                onClick={() =>
+                                  perform("close", async () => {
+                                    await api("paper-close/" + r.id, {
+                                      method: "POST",
+                                      body: {},
+                                    });
+                                    await refreshRecords();
+                                  })
+                                }
+                              >
+                                {t("close")}
+                              </Button>
+                            ),
+                          ]),
+                      )}
+                      <h3>{t("paperHistory")}</h3>
+                      <p className="muted">{t("paperHistoryLimit")}</p>
+                      {table(
+                        [
+                          t("symbol"),
+                          t("direction"),
+                          t("quantity"),
+                          t("entry"),
+                          t("paperExit"),
+                          t("pnl"),
+                        ],
+                        records
+                          .filter((r) => r.closed_at)
+                          .map((r) => [
+                            r.symbol,
+                            r.direction,
+                            fmt(r.quantity, 5),
+                            fmt(r.fill_price),
+                            fmt(r.close_price),
+                            fmt(r.pnl),
+                          ]),
                       )}
                     </>
                   )}

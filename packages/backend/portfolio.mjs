@@ -1,5 +1,6 @@
 import { query } from "./store.mjs";
 import { tickers } from "../market/providers.mjs";
+import { settlePaperPosition } from "../quant/research.mjs";
 import { cached } from "./cache.mjs";
 export async function paperOverview(userId) {
   const account = (
@@ -36,13 +37,16 @@ export async function paperOverview(userId) {
     const pnl =
       p == null
         ? null
-        : Math.max(
-            -collateral,
-            (o.direction === "LONG" ? p - +o.fill_price : +o.fill_price - p) *
-              +o.quantity,
-          );
-    if (pnl != null) equity += pnl;
+        : settlePaperPosition({
+            direction: o.direction,
+            entry: +o.fill_price,
+            exit: p,
+            quantity: +o.quantity,
+            entryFees: +o.fees,
+          }).pnl;
+    if (pnl != null) equity += pnl + +o.fees;
     return {
+      id: o.id,
       symbol: o.symbol,
       direction: o.direction,
       quantity: +o.quantity,
@@ -54,13 +58,28 @@ export async function paperOverview(userId) {
   });
   const allRealized = (
     await query(
-      "SELECT COALESCE(SUM(pnl),0) AS pnl FROM paper_orders WHERE account_id=$1 AND closed_at IS NOT NULL",
+      "SELECT COALESCE(SUM(pnl),0) AS pnl, COUNT(*) AS trades, COUNT(CASE WHEN pnl>0 THEN 1 END) AS wins, COALESCE(SUM(CASE WHEN pnl>0 THEN pnl ELSE 0 END),0) AS profit, COALESCE(SUM(CASE WHEN pnl<0 THEN -pnl ELSE 0 END),0) AS loss FROM paper_orders WHERE account_id=$1 AND closed_at IS NOT NULL",
       [account.id],
     )
   ).rows[0];
   const realizedBalance = +account.initial_balance + +allRealized.pnl;
   return {
     account,
+    updatedAt: new Date().toISOString(),
+    stats: {
+      closedTrades: +allRealized.trades,
+      winRate: +allRealized.trades
+        ? (+allRealized.wins / +allRealized.trades) * 100
+        : null,
+      realizedPnl: +allRealized.pnl,
+      profitFactor: +allRealized.loss
+        ? +allRealized.profit / +allRealized.loss
+        : null,
+      openPositions: open.length,
+      unrealizedPnl: complete
+        ? exposure.reduce((sum, o) => sum + o.unrealizedPnl, 0)
+        : null,
+    },
     orders,
     exposure,
     equity: complete ? equity : null,
