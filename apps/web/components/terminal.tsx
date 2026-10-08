@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { PaperPanel } from "./paper-panel";
 import { AdminPanel } from "./admin-panel";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
@@ -227,8 +228,6 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     [exchangeSecret, setExchangeSecret] = useState(""),
     [portfolio, setPortfolio] = useState<any>(null),
     [importedTrades, setImportedTrades] = useState<any[]>([]),
-    [paperAccount, setPaperAccount] = useState<any>(null),
-    [paperQuantity, setPaperQuantity] = useState(0.01),
     [alertKind, setAlertKind] = useState("price"),
     [alertComparison, setAlertComparison] = useState("above"),
     [alertValue, setAlertValue] = useState<number | "">(""),
@@ -444,11 +443,12 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
       .then(setNotifications)
       .catch(() => {});
   }, [user?.id]);
-  const refreshRecords = async () => {
+  useEffect(() => setPaperOverviewData(null), [user?.id]);
+  const refreshRecords = async (active: () => boolean = () => true) => {
     if (!user) return;
     if (tab === "paper") {
       const r = await api("paper/account");
-      setPaperAccount(r.account);
+      if (!active()) return;
       setPaperOverviewData(r);
       setRecords(r.orders);
     } else if (tab === "track") setRecords(await api("signals"));
@@ -462,8 +462,19 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     }
   };
   useEffect(() => {
+    let stopped = false,
+      refreshing = false;
+    const refresh = async () => {
+      if (refreshing || stopped) return;
+      refreshing = true;
+      try {
+        await refreshRecords(() => !stopped);
+      } finally {
+        refreshing = false;
+      }
+    };
     setRecords([]);
-    refreshRecords().catch((e: any) => error(e.message));
+    refresh().catch((e: any) => error(e.message));
     const timer = setInterval(() => {
       if (
         document.visibilityState === "visible" &&
@@ -472,9 +483,12 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
           tab === "alerts" ||
           tab === "backtest")
       )
-        refreshRecords().catch(() => {});
+        refresh().catch(() => {});
     }, 10000);
-    return () => clearInterval(timer);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
   }, [tab, user?.id]);
   useEffect(() => {
     if (!analysisId) return;
@@ -2273,186 +2287,20 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                     </>
                   )}
                   {tab === "paper" && (
-                    <>
-                      <div className="event-notice">{t("paperHint")}</div>
-                      <p className="muted">{t("paperRefresh")}</p>
-                      {paperOverviewData && !paperOverviewData.complete && (
-                        <div className="event-notice">
-                          {t("paperMissingQuotes")}
-                        </div>
-                      )}
-                      {paperOverviewData && (
-                        <>
-                          <div className="stats-grid">
-                            {stat(t("account"), fmt(paperOverviewData.equity))}
-                            {stat(
-                              t("drawdown"),
-                              fmt(paperOverviewData.drawdownPct) + "%",
-                            )}
-                          </div>
-                          {table(
-                            [
-                              t("symbol"),
-                              t("direction"),
-                              t("notional"),
-                              t("pnl"),
-                            ],
-                            paperOverviewData.exposure.map((r: any) => [
-                              r.symbol,
-                              r.direction,
-                              fmt(r.notional),
-                              fmt(r.unrealizedPnl),
-                            ]),
-                          )}
-                        </>
-                      )}
-                      <div className="stats-grid">
-                        {stat(t("balance"), fmt(paperAccount?.balance))}
-                        {stat(
-                          t("trades"),
-                          paperOverviewData?.stats?.closedTrades ?? 0,
-                        )}
-                        {stat(
-                          t("winRate"),
-                          fmt(paperOverviewData?.stats?.winRate) + "%",
-                        )}
-                        {stat(
-                          t("paperProfitFactor"),
-                          fmt(paperOverviewData?.stats?.profitFactor),
-                        )}
-                        {stat(
-                          t("pnl"),
-                          fmt(paperOverviewData?.stats?.realizedPnl),
-                        )}
-                      </div>
-                      <div className="form-card">
-                        <div className="form-grid">
-                          <Field label={t("symbol")}>
-                            <input
-                              value={instrument.symbol}
-                              onChange={(e) =>
-                                updateInstrument({
-                                  symbol: e.target.value.toUpperCase(),
-                                })
-                              }
-                            />
-                          </Field>
-                          <Field label={t("direction")}>
-                            <select
-                              value={direction}
-                              onChange={(e) => setDirection(e.target.value)}
-                            >
-                              <option>LONG</option>
-                              <option>SHORT</option>
-                            </select>
-                          </Field>
-                          <Field label={t("quantity")}>
-                            <NumberInput
-                              value={paperQuantity}
-                              set={setPaperQuantity}
-                            />
-                          </Field>
-                        </div>
-                        <p className="muted">
-                          {t("paperEstimate")}:{" "}
-                          {fmt(
-                            paperQuantity *
-                              (price || ticker?.price || 0) *
-                              1.001,
-                          )}{" "}
-                          USDT · {t("paperFee")}
-                        </p>
-                        <Button
-                          onClick={() =>
-                            perform("paper", async () => {
-                              await api("paper/orders", {
-                                method: "POST",
-                                headers: {
-                                  "idempotency-key": crypto.randomUUID(),
-                                },
-                                body: {
-                                  ...instrument,
-                                  direction,
-                                  quantity: paperQuantity,
-                                },
-                              });
-                              await refreshRecords();
-                              setToast(t("saved"));
-                            })
-                          }
-                        >
-                          {t("simulate")}
-                        </Button>
-                      </div>
-                      <h3>{t("paperOpenPositions")}</h3>
-                      {table(
-                        [
-                          t("symbol"),
-                          t("direction"),
-                          t("quantity"),
-                          t("entry"),
-                          t("price"),
-                          t("pnl"),
-                          t("closePosition"),
-                        ],
-                        records
-                          .filter((r) => !r.closed_at)
-                          .map((r) => [
-                            r.symbol,
-                            r.direction,
-                            fmt(r.quantity, 5),
-                            fmt(r.fill_price),
-                            fmt(
-                              paperOverviewData?.exposure?.find(
-                                (o: any) => o.id === r.id,
-                              )?.mark,
-                            ),
-                            fmt(
-                              paperOverviewData?.exposure?.find(
-                                (o: any) => o.id === r.id,
-                              )?.unrealizedPnl,
-                            ),
-                            !r.closed_at && (
-                              <Button
-                                variant="outline"
-                                onClick={() =>
-                                  perform("close", async () => {
-                                    await api("paper-close/" + r.id, {
-                                      method: "POST",
-                                      body: {},
-                                    });
-                                    await refreshRecords();
-                                  })
-                                }
-                              >
-                                {t("close")}
-                              </Button>
-                            ),
-                          ]),
-                      )}
-                      <h3>{t("paperHistory")}</h3>
-                      <p className="muted">{t("paperHistoryLimit")}</p>
-                      {table(
-                        [
-                          t("symbol"),
-                          t("direction"),
-                          t("quantity"),
-                          t("entry"),
-                          t("paperExit"),
-                          t("pnl"),
-                        ],
-                        records
-                          .filter((r) => r.closed_at)
-                          .map((r) => [
-                            r.symbol,
-                            r.direction,
-                            fmt(r.quantity, 5),
-                            fmt(r.fill_price),
-                            fmt(r.close_price),
-                            fmt(r.pnl),
-                          ]),
-                      )}
-                    </>
+                    <PaperPanel
+                      key={[
+                        instrument.venue,
+                        instrument.market,
+                        instrument.symbol,
+                      ].join(":")}
+                      overview={paperOverviewData}
+                      instrument={instrument}
+                      mark={price || ticker?.price || 0}
+                      demo={demo}
+                      busy={busy}
+                      run={perform}
+                      refresh={refreshRecords}
+                    />
                   )}
                   {tab === "track" && (
                     <>

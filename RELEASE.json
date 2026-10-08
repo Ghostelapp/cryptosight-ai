@@ -1,8 +1,8 @@
 {
   "name": "CryptoSight AI",
-  "version": "1.2.0-rc.1",
+  "version": "1.3.0-rc.1",
   "validation": {
-    "unit_integration_passed": 49,
+    "unit_integration_passed": 57,
     "live_tests_skipped": 3,
     "strict_typescript": "passed",
     "production_build": "passed",
@@ -12,7 +12,7 @@
     "synthetic_gateway_symbols": 51,
     "synthetic_transport_p95_ms": 1,
     "production_wallet_http_flow": "passed",
-    "browser_scenarios_discovered": 9,
+    "browser_scenarios_discovered": 10,
     "mobile_browser_execution": "blocked: Chromium executable unavailable",
     "production_admin_http_flow": "passed"
   },
@@ -26,25 +26,27 @@
   "wallet_auth": {
     "protocol": "EIP-4361",
     "scope": "injected EVM EOA, EIP-1193/EIP-6963",
-    "actions": [
-      "register",
-      "login",
-      "link",
-      "unlink"
-    ],
+    "actions": ["register", "login", "link", "unlink"],
     "mfa": "TOTP enforced",
     "smart_contract_wallets": false
   },
   "administration": {
-    "roles": [
-      "user",
-      "admin"
-    ],
+    "roles": ["user", "admin"],
     "shared_ai_agents": true,
     "encrypted_write_only_keys": true,
     "account_suspension": true,
     "persisted_ai_limits_and_pause": true,
     "audit_log": true,
     "bootstrap": "server-only existing-account UUID"
+  },
+  "paper_trading": {
+    "market_and_limit": true,
+    "reserved_collateral": true,
+    "editable_sl_tp": true,
+    "partial_exits": true,
+    "execution_ledger": true,
+    "required_migration": "006_paper_trading.sql",
+    "automatic_execution": "persistent worker required; 5-second sampling",
+    "leverage": 1
   }
 }

@@ -12,7 +12,7 @@ export async function paperOverview(userId) {
         [account.id],
       )
     ).rows;
-  const open = orders.filter((o) => !o.closed_at),
+  const open = orders.filter((o) => o.status === "filled"),
     groups = [...new Set(open.map((o) => o.venue + ":" + o.market))],
     prices = {};
   for (const g of groups) {
@@ -25,7 +25,10 @@ export async function paperOverview(userId) {
       prices[g] = [];
     }
   }
-  let equity = +account.balance,
+  const reserved = orders
+    .filter((o) => o.status === "pending")
+    .reduce((sum, o) => sum + +o.reserved, 0);
+  let equity = +account.balance + reserved,
     complete = true;
   const exposure = open.map((o) => {
     const p = prices[o.venue + ":" + o.market]?.find(
@@ -58,20 +61,42 @@ export async function paperOverview(userId) {
   });
   const allRealized = (
     await query(
-      "SELECT COALESCE(SUM(pnl),0) AS pnl, COUNT(*) AS trades, COUNT(CASE WHEN pnl>0 THEN 1 END) AS wins, COALESCE(SUM(CASE WHEN pnl>0 THEN pnl ELSE 0 END),0) AS profit, COALESCE(SUM(CASE WHEN pnl<0 THEN -pnl ELSE 0 END),0) AS loss FROM paper_orders WHERE account_id=$1 AND closed_at IS NOT NULL",
+      "SELECT COALESCE(SUM(pnl),0) AS pnl, COUNT(*) AS trades, COUNT(CASE WHEN pnl>0 THEN 1 END) AS wins, COALESCE(SUM(CASE WHEN pnl>0 THEN pnl ELSE 0 END),0) AS profit, COALESCE(SUM(CASE WHEN pnl<0 THEN -pnl ELSE 0 END),0) AS loss FROM paper_orders WHERE account_id=$1 AND status='closed'",
       [account.id],
     )
   ).rows[0];
-  const realizedBalance = +account.initial_balance + +allRealized.pnl;
+  const exits = (
+    await query(
+      "SELECT e.*,o.symbol,o.direction FROM paper_exits e JOIN paper_orders o ON o.id=e.order_id WHERE o.account_id=$1 ORDER BY e.created_at DESC LIMIT 200",
+      [account.id],
+    )
+  ).rows;
+  const realized = (
+    await query(
+      "SELECT COALESCE(SUM(e.pnl),0) AS pnl FROM paper_exits e JOIN paper_orders o ON o.id=e.order_id WHERE o.account_id=$1",
+      [account.id],
+    )
+  ).rows[0];
+  const health = (
+    await query("SELECT last_tick FROM paper_engine_health WHERE id=1")
+  ).rows[0];
+  const engineActive = Boolean(
+    health && Date.now() - new Date(health.last_tick).getTime() < 45000,
+  );
+  const realizedBalance = +account.initial_balance + +realized.pnl;
   return {
     account,
+    exits,
+    reserved,
+    engineActive,
+    engineLastTick: health?.last_tick ?? null,
     updatedAt: new Date().toISOString(),
     stats: {
       closedTrades: +allRealized.trades,
       winRate: +allRealized.trades
         ? (+allRealized.wins / +allRealized.trades) * 100
         : null,
-      realizedPnl: +allRealized.pnl,
+      realizedPnl: +realized.pnl,
       profitFactor: +allRealized.loss
         ? +allRealized.profit / +allRealized.loss
         : null,

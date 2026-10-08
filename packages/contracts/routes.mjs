@@ -167,6 +167,12 @@ export const routes = {
   "/paper-close/{id}": [
     "post"
   ],
+  "/paper-cancel/{id}": [
+    "post"
+  ],
+  "/paper-protection/{id}": [
+    "patch"
+  ],
   "/backtests/{id}": [
     "get"
   ],

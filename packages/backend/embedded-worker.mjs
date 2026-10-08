@@ -1,3 +1,4 @@
+import { paperTick } from "./paper.mjs";
 import { query } from "./store.mjs";
 import {
   recoverAbandonedJobs,
@@ -18,6 +19,18 @@ export function startEmbeddedWorker() {
   if (globalThis[key]) return;
   let analysisBusy = false,
     maintenanceBusy = false;
+  let paperBusy = false;
+  const paper = setInterval(async () => {
+    if (paperBusy) return;
+    paperBusy = true;
+    try {
+      await paperTick();
+    } catch {
+    } finally {
+      paperBusy = false;
+    }
+  }, 5000);
+  paper.unref();
   const analysis = setInterval(async () => {
     if (analysisBusy) return;
     analysisBusy = true;
@@ -47,5 +60,5 @@ export function startEmbeddedWorker() {
   }, 15000);
   analysis.unref();
   maintenance.unref();
-  globalThis[key] = [analysis, maintenance];
+  globalThis[key] = [analysis, maintenance, paper];
 }
