@@ -8,21 +8,25 @@ import { Terminal } from "../components/terminal";
 const messages = { en, pl, de };
 export default function Home() {
   const [locale, setLocale] = useState<"en" | "pl" | "de">("en"),
-    [theme, setTheme] = useState("dark");
+    [theme, setTheme] = useState("dark"),
+    [preferencesLoaded, setPreferencesLoaded] = useState(false);
   useEffect(() => {
     const l = localStorage.getItem("locale");
     if (l && l in messages) setLocale(l as any);
     const th = localStorage.getItem("theme");
     if (th === "light") setTheme(th);
+    setPreferencesLoaded(true);
   }, []);
   useEffect(() => {
+    if (!preferencesLoaded) return;
     document.documentElement.lang = locale;
     localStorage.setItem("locale", locale);
-  }, [locale]);
+  }, [locale, preferencesLoaded]);
   useEffect(() => {
+    if (!preferencesLoaded) return;
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("theme", theme);
-  }, [theme]);
+  }, [theme, preferencesLoaded]);
   return (
     <NextIntlClientProvider
       locale={locale}

@@ -1140,7 +1140,11 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                         </div>
                       </div>
                       <div className="chart-body">
-                        <div className="drawing-toolbar">
+                        <div
+                          className="drawing-toolbar"
+                          role="toolbar"
+                          aria-label={t("drawings")}
+                        >
                           {tools.map(([key, name, Icon]) => (
                             <button
                               key={key}
