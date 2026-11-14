@@ -54,6 +54,24 @@ test("locale catalogs cover equal keys", () => {
       keys,
     );
 });
+
+test("risk contract accepts the optional target and requires supported leverage", () => {
+  const risk = ajv.compile(
+    read("packages/contracts/openapi.json").components.schemas.RiskRequest,
+  );
+  const input = {
+    account: 10000,
+    riskPct: 1,
+    entry: 100,
+    stop: 95,
+    leverage: 1,
+    direction: "LONG",
+  };
+  assert.equal(risk(input), true);
+  assert.equal(risk({ ...input, target: 110 }), true);
+  assert.equal(risk({ ...input, target: -10 }), false);
+  assert.equal(risk({ ...input, leverage: 0.5 }), false);
+});
 test("API operation IDs unique and private routes require sessions", () => {
   const api = read("packages/contracts/openapi.json");
   const ids = [];

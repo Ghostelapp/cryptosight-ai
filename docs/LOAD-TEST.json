@@ -2,8 +2,8 @@
   "test": "synthetic local WebSocket transport; does not measure exchange latency or browser rendering",
   "symbols": 51,
   "connections": 7,
-  "events": 1511,
+  "events": 1385,
   "p95GatewayToClientMs": 1,
   "passed": true,
-  "timestamp": "2026-10-04T18:50:33.596Z"
+  "timestamp": "2026-11-14T19:43:48.739Z"
 }

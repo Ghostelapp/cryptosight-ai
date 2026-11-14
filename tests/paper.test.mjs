@@ -1,6 +1,7 @@
 import { test, before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
+import { readFile } from "node:fs/promises";
 process.env.NODE_ENV = "test";
 process.env.DEV_DATABASE_PATH = "memory://";
 process.env.APP_ORIGIN = "http://localhost:3000";
@@ -97,6 +98,67 @@ beforeEach(async () => {
 after(async () => {
   globalThis.fetch = originalFetch;
   await (await db()).close();
+});
+
+test("reapplying the paper migration preserves partial exits and backfills legacy trades once", async () => {
+  const entry = await request(
+    "paper/orders",
+    order(),
+    owner,
+    "migration-entry",
+  );
+  assert.equal(entry.status, 200);
+  bid = 110;
+  assert.equal(
+    (
+      await request(
+        "paper-close/" + entry.data.id,
+        { quantity: 1 },
+        owner,
+        "migration-partial",
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request(
+        "paper-close/" + entry.data.id,
+        {},
+        owner,
+        "migration-final",
+      )
+    ).status,
+    200,
+  );
+  const before = (await request("paper/account")).data;
+  assert.equal(before.exits.length, 2);
+  const legacy = (
+    await query(
+      "INSERT INTO paper_orders(account_id,venue,market,symbol,direction,quantity,initial_quantity,status,order_type,fill_price,close_price,fees,pnl,closed_at,idempotency_key) VALUES($1,'binance','spot','BTCUSDT','LONG',1,1,'closed','market',100,110,0.1,9.79,now(),'legacy-migration') RETURNING id",
+      [before.account.id],
+    )
+  ).rows[0];
+  const migration = await readFile(
+    new URL("../db/006_paper_trading.sql", import.meta.url),
+    "utf8",
+  );
+  await (await db()).exec(migration);
+  await (await db()).exec(migration);
+  const after = (await request("paper/account")).data;
+  assert.equal(after.exits.length, 3);
+  assert.equal(
+    after.exits.filter((exit) => exit.order_id === entry.data.id).length,
+    2,
+  );
+  assert.equal(
+    after.exits.filter((exit) => exit.order_id === legacy.id).length,
+    1,
+  );
+  assert.ok(
+    Math.abs(after.stats.realizedPnl - before.stats.realizedPnl - 9.79) < 1e-8,
+  );
+  assert.equal(after.account.balance, before.account.balance);
 });
 test("limit reserves collateral, cannot fill beyond its price, cancellation refunds exactly once and stays tenant scoped", async () => {
   const r = await request(

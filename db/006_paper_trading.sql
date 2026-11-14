@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS paper_exits (
  reason text NOT NULL, idempotency_key text NOT NULL, UNIQUE(order_id,idempotency_key)
 );
 INSERT INTO paper_exits(order_id,quantity,price,pnl,entry_fees,exit_fees,reason,idempotency_key)
- SELECT id,quantity,close_price,pnl,fees,close_price*quantity*0.001,'manual','legacy' FROM paper_orders
- WHERE status='closed' AND close_price IS NOT NULL ON CONFLICT DO NOTHING;
+ SELECT o.id,o.quantity,o.close_price,o.pnl,o.fees,o.close_price*o.quantity*0.001,'manual','legacy' FROM paper_orders o
+ WHERE o.status='closed' AND o.close_price IS NOT NULL
+ AND NOT EXISTS (SELECT 1 FROM paper_exits e WHERE e.order_id=o.id)
+ ON CONFLICT DO NOTHING;
 UPDATE paper_exits e SET created_at=o.closed_at FROM paper_orders o WHERE e.order_id=o.id AND e.idempotency_key='legacy';
 CREATE INDEX IF NOT EXISTS paper_active_idx ON paper_orders(status) WHERE status IN ('pending','filled');
 CREATE INDEX IF NOT EXISTS paper_exits_order_idx ON paper_exits(order_id,created_at);

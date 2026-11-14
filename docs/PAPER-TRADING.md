@@ -28,7 +28,7 @@ Use a maintenance window: pause web/worker writes, apply migration **006_paper_t
 npm run migrate
 ```
 
-The migration preserves existing balances/orders, backfills prior closed trades into the exit ledger and labels the virtual quote currency USDT. It is included in the versioned PostgreSQL migration runner and embedded development setup. Back up production data before any migration.
+The migration preserves existing balances/orders, backfills prior closed trades into the exit ledger only when they have no exit records, and labels the virtual quote currency USDT. Reapplying it in development preserves partial/full execution history without duplicating realized PnL. It is included in the versioned PostgreSQL migration runner and embedded development setup. Back up production data before any migration.
 
 Local development without DATABASE_URL uses the embedded worker automatically. Production/Vercel requires a separate persistent worker process:
 
@@ -42,6 +42,6 @@ The UI reports an inactive engine after 45 seconds without a completed paper tic
 
 ## Validation
 
-Eight additional API/database fixture tests cover reservations, depth/limit restrictions, exact refunds, fee allocation, replay and ownership, concurrent closes, stop gaps, short targets, latched exits, risk guards and editable protection. The complete Node suite passes 57 tests, with three optional live-exchange tests skipped. Strict TypeScript and production build pass. EN/PL/DE key parity and static paper labels are checked.
+Nine paper API/database fixture tests cover reservations, depth/limit restrictions, exact refunds, fee allocation, replay and ownership, concurrent closes, stop gaps, short targets, latched exits, risk guards, editable protection and repeated migration. The integrated Node suite passes 71 tests, with three optional live-exchange tests skipped. Strict TypeScript, production build and EN/PL/DE contract checks pass.
 
-A Playwright paper-panel scenario covers the ticket, cancellation, protection editing, partial/full exits and mobile width using explicit UI response fixtures. Its execution is blocked locally by the unavailable Chromium executable/download; CI must run it. External PostgreSQL/Redis and live exchange operation still require staging validation.
+A Playwright paper-panel scenario passes for the ticket, cancellation, protection editing, partial/full exits and mobile width using explicit UI response fixtures. All 18 browser scenarios pass, and the mobile paper-panel screenshot was inspected. External PostgreSQL/Redis and live exchange operation still require staging validation. See [INTEGRATION-REVIEW.md](INTEGRATION-REVIEW.md).

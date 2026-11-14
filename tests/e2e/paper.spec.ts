@@ -122,7 +122,9 @@ test("paper ticket, reserved limit cancellation, SL/TP editing and partial/full 
   await page
     .getByRole("button", { name: "Paper trading", exact: true })
     .click();
-  await page.getByLabel("Order type", { exact: true }).selectOption("limit");
+  await page
+    .getByRole("combobox", { name: "Order type", exact: true })
+    .selectOption("limit");
   await page.getByLabel("Limit price", { exact: true }).fill("100");
   await page.getByLabel("Quantity", { exact: true }).fill("2");
   await page.getByLabel("Stop-loss", { exact: true }).fill("95");
@@ -161,4 +163,8 @@ test("paper ticket, reserved limit cancellation, SL/TP editing and partial/full 
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+  await page.screenshot({
+    path: "test-results/paper-mobile.png",
+    fullPage: true,
+  });
 });

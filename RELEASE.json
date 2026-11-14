@@ -1,8 +1,8 @@
 {
   "name": "CryptoSight AI",
-  "version": "1.3.0-rc.1",
+  "version": "1.4.0-rc.1",
   "validation": {
-    "unit_integration_passed": 57,
+    "unit_integration_passed": 71,
     "live_tests_skipped": 3,
     "strict_typescript": "passed",
     "production_build": "passed",
@@ -12,13 +12,15 @@
     "synthetic_gateway_symbols": 51,
     "synthetic_transport_p95_ms": 1,
     "production_wallet_http_flow": "passed",
-    "browser_scenarios_discovered": 10,
-    "mobile_browser_execution": "blocked: Chromium executable unavailable",
-    "production_admin_http_flow": "passed"
+    "browser_scenarios_discovered": 18,
+    "mobile_browser_execution": "passed: Chromium desktop/mobile flows and screenshots",
+    "production_admin_http_flow": "passed",
+    "workflow_static_validation": "passed: actionlint 1.7.12",
+    "gateway_handshake_limits": "passed",
+    "repeated_paper_migration": "passed"
   },
   "unverified": [
     "live exchange access and end-to-end latency",
-    "browser E2E and visual QA: Chromium download unavailable",
     "Docker/PostgreSQL/Redis deployment and restore",
     "credential-dependent external integrations"
   ],
@@ -48,5 +50,19 @@
     "required_migration": "006_paper_trading.sql",
     "automatic_execution": "persistent worker required; 5-second sampling",
     "leverage": 1
+  },
+  "validated_at": "2026-11-14",
+  "integrated_sources": {
+    "main": "bd3c9e476ec3b8eac689510ad2306eb6fe54a202",
+    "terminal": "67f82f5ef138b692c47bdef2312066cd0aa80148",
+    "gateway": "c886653ce30932f405895cc1a489900199eabc44"
+  },
+  "runtime_versions": {
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react_dom": "19.3.1",
+    "zod": "4.6.7",
+    "nodemailer": "10.5.0",
+    "sentry_node": "11.12.0"
   }
 }

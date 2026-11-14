@@ -218,6 +218,8 @@ server.on("upgrade", async (req, socket, head) => {
   const ip = req.socket.remoteAddress || "unknown";
   const releaseIP = reserveIP(ip);
   if (!releaseIP) return socket.destroy();
+  // Also release failed/abandoned handshakes that never create a WebSocket.
+  socket.once("close", releaseIP);
   let userId = null;
   try {
     const token = new URL(req.url, "http://localhost").searchParams.get(

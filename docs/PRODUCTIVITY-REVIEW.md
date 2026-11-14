@@ -2,6 +2,8 @@
 
 Implemented on 2026-11-14 (Europe/Warsaw).
 
+The verification below records the first productivity snapshot. The subsequent [integrated update](INTEGRATION-REVIEW.md) includes newer paper trading/mobile/gateway code, patched dependencies and the current test results.
+
 - **Quick commands:** open with the header search button or Ctrl/Cmd+K. Search localized navigation, risk calculator, indicators, theme, terminal reset and market symbols. Arrow keys select, Enter opens and Escape closes. The shortcut also works while typing in a field. Existing chart shortcuts no longer intercept Ctrl+A, other pages or dialogs.
 - **Workspace:** this browser restores venue, market, symbol, timeframe, chart type, layout, indicators, indicator period, fallback preference and panel order. A versioned allowlist validates stored values. Invalid or unavailable browser storage falls back to defaults. Quick commands can restore defaults. Sample replay and account secrets are not persisted in this workspace object.
 - **Screener:** independent pair search, minimum volume, gainers/losers, watchlist filter, sortable column headers, result count and progressive rows. Missing numeric values sort last. A star changes the watchlist and a pair opens its chart. Authenticated watchlists now load for the selected venue and market, including an intentionally empty list.

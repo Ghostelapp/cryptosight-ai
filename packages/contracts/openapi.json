@@ -12486,9 +12486,13 @@
             "type": "number",
             "exclusiveMinimum": 0
           },
+          "target": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
           "leverage": {
             "type": "number",
-            "exclusiveMinimum": 0,
+            "minimum": 1,
             "maximum": 100
           },
           "direction": {
