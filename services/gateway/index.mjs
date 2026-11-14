@@ -12,9 +12,10 @@ import {
   orderflowConfig,
   parseOrderflow,
 } from "../../packages/market/orderflow.mjs";
+import { createConnectionLimiter } from "./connection-limits.mjs";
 const upstreams = new Map(),
   clients = new Map(),
-  ipCounts = new Map();
+  reserveIP = createConnectionLimiter(20);
 let received = 0,
   delivered = 0,
   reconnects = 0;
@@ -215,26 +216,37 @@ server.on("upgrade", async (req, socket, head) => {
   if (origin !== (process.env.APP_ORIGIN || "http://localhost:3000"))
     return socket.destroy();
   const ip = req.socket.remoteAddress || "unknown";
-  if ((ipCounts.get(ip) || 0) >= 20) return socket.destroy();
+  const releaseIP = reserveIP(ip);
+  if (!releaseIP) return socket.destroy();
   let userId = null;
   try {
     const token = new URL(req.url, "http://localhost").searchParams.get(
       "ticket",
     );
     if (token) {
-      if (!process.env.DATABASE_URL) return socket.destroy();
+      if (!process.env.DATABASE_URL) {
+        releaseIP();
+        return socket.destroy();
+      }
       const r = await query(
         "DELETE FROM auth_tokens WHERE token_hash=$1 AND kind='ws' AND expires_at>now() RETURNING user_id",
         [hash(token)],
       );
-      if (!r.rows[0]) return socket.destroy();
+      if (!r.rows[0]) {
+        releaseIP();
+        return socket.destroy();
+      }
       userId = r.rows[0].user_id;
     }
   } catch {
+    releaseIP();
     return socket.destroy();
   }
+  if (socket.destroyed) {
+    releaseIP();
+    return;
+  }
   wss.handleUpgrade(req, socket, head, (ws) => {
-    ipCounts.set(ip, (ipCounts.get(ip) || 0) + 1);
     clients.set(ws, {
       subscriptions: new Set(),
       userId,
@@ -297,7 +309,7 @@ server.on("upgrade", async (req, socket, head) => {
     ws.on("close", () => {
       for (const key of clients.get(ws)?.subscriptions || []) detach(ws, key);
       clients.delete(ws);
-      ipCounts.set(ip, Math.max(0, (ipCounts.get(ip) || 1) - 1));
+      releaseIP();
     });
   });
 });
