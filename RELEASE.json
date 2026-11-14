@@ -17,12 +17,14 @@
     "production_admin_http_flow": "passed",
     "workflow_static_validation": "passed: actionlint 1.7.12",
     "gateway_handshake_limits": "passed",
-    "repeated_paper_migration": "passed"
+    "repeated_paper_migration": "passed",
+    "remote_ci": "blocked: GitHub account locked due to billing; jobs did not start"
   },
   "unverified": [
     "live exchange access and end-to-end latency",
     "Docker/PostgreSQL/Redis deployment and restore",
-    "credential-dependent external integrations"
+    "credential-dependent external integrations",
+    "GitHub-hosted CI execution: account billing lock"
   ],
   "automatic_exchange_execution": false,
   "wallet_auth": {

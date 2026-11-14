@@ -20,7 +20,7 @@ This version combines the newer repository code with the local terminal improvem
 
 The production dependency audit initially reported eight affected packages, including critical Next.js advisories. Updated Next.js to 16.4.6, React/React DOM to 19.3.1, Sentry Node to 11.12.0, Nodemailer to 10.5.0, Zod to 4.6.7 and vulnerable transitive dependencies. The final `npm audit --omit=dev` reports zero known vulnerabilities; `dependency-audit.json` records the result. This is an audit result, not proof that all vulnerabilities are absent.
 
-GitHub Actions now uses checkout 7.0.1, setup-node 7.1.0, setup-python 7.1.0 and upload-artifact 7.0.2, pinned to their verified full commit SHAs. Actionlint 1.7.12 passes. Remote runner execution is checked separately after pushing; local validation does not imply that GitHub runners have executed.
+GitHub Actions now uses checkout 7.0.1, setup-node 7.1.0, setup-python 7.1.0 and upload-artifact 7.0.2, pinned to their verified full commit SHAs. Actionlint 1.7.12 passes. After pushing, GitHub accepted the workflow and created both jobs, but blocked them before any steps ran: "The job was not started because your account is locked due to a billing issue." See [the observed run](https://github.com/Ghostelapp/cryptosight-ai/actions/runs/43634080617). Account billing must be resolved before remote runner verification; local checks passed independently.
 
 ## Observed verification
 
