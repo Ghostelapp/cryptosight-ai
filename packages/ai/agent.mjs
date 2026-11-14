@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { projectRoot } from "../backend/paths.mjs";
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import {
@@ -18,13 +19,7 @@ import { onchain, sentiment, liquidations } from "../market/optional.mjs";
 import { redisClient } from "../backend/cache.mjs";
 export const schema = JSON.parse(
   readFileSync(
-    resolve(
-      process.env.PROJECT_ROOT ||
-        (process.cwd().endsWith("/apps/web")
-          ? resolve(process.cwd(), "../..")
-          : process.cwd()),
-      "packages/contracts/analysis.schema.json",
-    ),
+    resolve(projectRoot(), "packages/contracts/analysis.schema.json"),
     "utf8",
   ),
 );

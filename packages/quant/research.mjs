@@ -7,6 +7,7 @@ export function positionSize({
   feeBps = 10,
   slippageBps = 5,
   direction = "LONG",
+  target,
 }) {
   for (const v of [
     account,
@@ -28,9 +29,17 @@ export function positionSize({
     leverage > 100 ||
     feeBps < 0 ||
     slippageBps < 0 ||
+    feeBps + slippageBps >= 10000 ||
     !["LONG", "SHORT"].includes(direction) ||
     (direction === "LONG" && stop >= entry) ||
     (direction === "SHORT" && stop <= entry)
+  )
+    throw new Error("invalid_risk");
+  if (
+    target != null &&
+    (!Number.isFinite(target) ||
+      target <= 0 ||
+      (direction === "LONG" ? target <= entry : target >= entry))
   )
     throw new Error("invalid_risk");
   const risk = (account * riskPct) / 100,
@@ -38,19 +47,35 @@ export function positionSize({
       Math.abs(entry - stop) +
       ((entry + stop) * (feeBps + slippageBps)) / 10000,
     raw = risk / unitRisk,
-    quantity = Math.min(raw, (account * leverage) / entry);
+    quantity = Math.min(raw, (account * leverage) / entry),
+    costRate = (feeBps + slippageBps) / 10000,
+    breakEvenPrice =
+      direction === "LONG"
+        ? (entry * (1 + costRate)) / (1 - costRate)
+        : (entry * (1 - costRate)) / (1 + costRate),
+    targetCosts =
+      target == null ? null : quantity * (entry + target) * costRate,
+    grossProfit = target == null ? null : quantity * Math.abs(target - entry),
+    netProfit = grossProfit == null ? null : grossProfit - targetCosts;
   return {
     riskBudget: risk,
     quantity,
     notional: quantity * entry,
     margin: (quantity * entry) / leverage,
     maxLoss: quantity * unitRisk,
+    breakEvenPrice,
+    target: target ?? null,
+    targetCosts,
+    grossProfit,
+    netProfit,
+    rewardRisk: netProfit == null ? null : netProfit / (quantity * unitRisk),
     liquidationPrice: null,
     liquidationReason: "Venue margin tiers and collateral mode required",
     warnings: [
       ...(leverage >= 10 ? ["high_leverage"] : []),
       ...(riskPct >= 2 ? ["high_account_risk"] : []),
       ...(quantity < raw ? ["collateral_capped"] : []),
+      ...(netProfit != null && netProfit <= 0 ? ["target_below_costs"] : []),
     ],
   };
 }

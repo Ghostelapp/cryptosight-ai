@@ -9,7 +9,7 @@
     "build": "npm run build -w apps/web",
     "start": "node scripts/start.mjs",
     "test": "node --test tests/*.test.mjs",
-    "contracts:check": "python3 tests/check_contracts.py",
+    "contracts:check": "node scripts/check-contracts.mjs",
     "gateway": "node --env-file-if-exists=.env services/gateway/index.mjs",
     "worker": "node --env-file-if-exists=.env services/worker/index.mjs",
     "migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",

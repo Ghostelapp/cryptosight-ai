@@ -296,6 +296,7 @@ export async function handle(req) {
                 riskPct: positive.max(5),
                 entry: positive,
                 stop: positive,
+                target: positive.optional(),
                 leverage: positive.max(100),
                 direction: z.enum(["LONG", "SHORT"]),
                 feeBps: finite.min(0).default(10),

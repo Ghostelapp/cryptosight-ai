@@ -2,6 +2,8 @@
 
 Updated 2026-10-05 (Europe/Warsaw), release 1.1.0-rc.2.
 
+This is the historical mobile-change record. Browser execution and screenshot inspection became available in the 2026-11-14 update; see [VALIDATION.md](VALIDATION.md) and [PRODUCTIVITY-REVIEW.md](PRODUCTIVITY-REVIEW.md) for current results.
+
 ## Changes
 
 - Replaced the mobile sidebar with a Radix modal navigation drawer: backdrop dismissal, Escape, focus containment, return focus, localized title and close control, and current-page announcement.

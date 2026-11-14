@@ -71,6 +71,36 @@ before(async () => {
 after(async () => {
   await (await db()).close();
 });
+
+test("public risk API accepts an optional target and validates its direction", async () => {
+  const body = {
+    account: 10000,
+    riskPct: 1,
+    entry: 100,
+    stop: 95,
+    leverage: 1,
+    direction: "LONG",
+    target: 110,
+    feeBps: 10,
+    slippageBps: 5,
+  };
+  const result = await request("risk", { method: "POST", body });
+  assert.equal(result.status, 200);
+  assert.equal(result.data.target, 110);
+  assert.ok(result.data.netProfit > 0);
+  assert.ok(result.data.rewardRisk < 2);
+  assert.equal(
+    (await request("risk", { method: "POST", body: { ...body, target: 90 } }))
+      .status,
+    400,
+  );
+  const { target, ...withoutTarget } = body;
+  assert.equal(
+    (await request("risk", { method: "POST", body: withoutTarget })).data
+      .netProfit,
+    null,
+  );
+});
 test("migrations create application tables and OHLC integrity constraints", async () => {
   const tables = (
     await query(

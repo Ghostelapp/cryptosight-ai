@@ -8,21 +8,33 @@ import { Terminal } from "../components/terminal";
 const messages = { en, pl, de };
 export default function Home() {
   const [locale, setLocale] = useState<"en" | "pl" | "de">("en"),
-    [theme, setTheme] = useState("dark");
+    [theme, setTheme] = useState("dark"),
+    [preferencesReady, setPreferencesReady] = useState(false);
   useEffect(() => {
-    const l = localStorage.getItem("locale");
-    if (l && l in messages) setLocale(l as any);
-    const th = localStorage.getItem("theme");
-    if (th === "light") setTheme(th);
+    try {
+      const l = localStorage.getItem("locale");
+      if (l === "en" || l === "pl" || l === "de") setLocale(l);
+      const th = localStorage.getItem("theme");
+      if (th === "light") setTheme(th);
+    } catch {
+      /* Browser preferences are optional. */
+    }
+    setPreferencesReady(true);
   }, []);
   useEffect(() => {
+    if (!preferencesReady) return;
     document.documentElement.lang = locale;
-    localStorage.setItem("locale", locale);
-  }, [locale]);
+    try {
+      localStorage.setItem("locale", locale);
+    } catch {}
+  }, [locale, preferencesReady]);
   useEffect(() => {
+    if (!preferencesReady) return;
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+    try {
+      localStorage.setItem("theme", theme);
+    } catch {}
+  }, [theme, preferencesReady]);
   return (
     <NextIntlClientProvider
       locale={locale}

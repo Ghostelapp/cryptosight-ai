@@ -28,7 +28,7 @@ test("administrator can save an encrypted agent and expose it in analysis contro
     panel.getByRole("heading", { name: "Administration", exact: true }),
   ).toBeVisible();
   await panel.getByLabel("Name", { exact: true }).fill("E2E managed analyst");
-  await panel.getByLabel("Model", { exact: true }).fill("test-model");
+  await panel.getByLabel("Model ID", { exact: true }).fill("test-model");
   await panel
     .getByLabel("API key", { exact: true })
     .fill("synthetic-e2e-api-key");
@@ -43,12 +43,12 @@ test("administrator can save an encrypted agent and expose it in analysis contro
   expect(await response.text()).not.toContain("synthetic-e2e-api-key");
   await page.getByRole("button", { name: "Terminal", exact: true }).click();
   await page
-    .getByLabel("AI agent", { exact: true })
+    .getByRole("combobox", { name: "AI agent", exact: true })
     .selectOption({ label: "E2E managed analyst" });
-  await expect(page.getByLabel("Model", { exact: true })).toHaveValue(
+  await expect(page.getByLabel("Model ID", { exact: true })).toHaveValue(
     "test-model",
   );
-  await expect(page.getByLabel("Model", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Model ID", { exact: true })).toBeDisabled();
   await page.screenshot({
     path: "test-results/admin-managed-agent.png",
     fullPage: true,

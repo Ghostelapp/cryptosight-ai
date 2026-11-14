@@ -2,6 +2,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { AdminPanel } from "./admin-panel";
+import { CommandPalette, TerminalCommand } from "./command-palette";
+import { MarketScreener } from "./market-screener";
+import { JournalInsights } from "./journal-insights";
+import {
+  defaultWorkspace,
+  normalizeWorkspace,
+  workspaceKey,
+} from "../lib/workspace.mjs";
+import { tradePnl } from "../../../packages/quant/journal.mjs";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   Activity,
@@ -151,6 +160,8 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     [busy, setBusy] = useState(""),
     [toast, setToast] = useState(""),
     [mobileNav, setMobileNav] = useState(false),
+    [commandsOpen, setCommandsOpen] = useState(false),
+    [workspaceReady, setWorkspaceReady] = useState(false),
     [agentId, setAgentId] = useState(""),
     [managedAgents, setManagedAgents] = useState<any[]>([]);
   const [instrument, setInstrument] = useState<Instrument>({
@@ -170,6 +181,8 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     [flow, setFlow] = useState<any>(null),
     [allowFallback, setAllowFallback] = useState(true),
     [tickers, setTickers] = useState<any[]>([]),
+    [tickerUpdatedAt, setTickerUpdatedAt] = useState<number | null>(null),
+    [tickerStatus, setTickerStatus] = useState("loading"),
     [watchlist, setWatchlist] = useState<string[]>(majors),
     [search, setSearch] = useState(""),
     [book, setBook] = useState<any>(null),
@@ -203,12 +216,14 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     [riskPct, setRiskPct] = useState(1),
     [entry, setEntry] = useState<number | "">(""),
     [stop, setStop] = useState<number | "">(""),
+    [target, setTarget] = useState<number | "">(""),
+    [riskFees, setRiskFees] = useState(10),
+    [riskSlippage, setRiskSlippage] = useState(5),
     [leverage, setLeverage] = useState(1),
     [direction, setDirection] = useState("LONG"),
     [sizeResult, setSizeResult] = useState<any>(null),
     [riskOpen, setRiskOpen] = useState(false);
   const [records, setRecords] = useState<any[]>([]),
-    [minVolume, setMinVolume] = useState(10000000),
     [scanner, setScanner] = useState<any[]>([]),
     [brief, setBrief] = useState<any>(null),
     [correlations, setCorrelations] = useState<any[]>([]),
@@ -254,6 +269,75 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     [deleteOpen, setDeleteOpen] = useState(false);
   const chartRef = useRef<any>(null),
     analysisInterval = useRef<any>(null);
+  const applyWorkspace = (value: unknown) => {
+    const saved = normalizeWorkspace(value, [
+      "EMA",
+      "MA",
+      "BOLL",
+      "SAR",
+      "RSI",
+      "MACD",
+      "CCI",
+      "OBV",
+      ...extraIndicators,
+    ]);
+    setInstrument(saved.instrument);
+    setChartType(saved.chartType);
+    setLayout(saved.layout);
+    setIndicators(saved.indicatorNames);
+    setPeriod(saved.period);
+    setPanelOrder(saved.panelOrder);
+    setAllowFallback(saved.allowFallback);
+  };
+  useEffect(() => {
+    try {
+      applyWorkspace(JSON.parse(localStorage.getItem(workspaceKey) || "null"));
+    } catch {
+      applyWorkspace(defaultWorkspace);
+    }
+    setWorkspaceReady(true);
+  }, []);
+  useEffect(() => {
+    if (!workspaceReady) return;
+    try {
+      localStorage.setItem(
+        workspaceKey,
+        JSON.stringify({
+          instrument,
+          chartType,
+          layout,
+          indicatorNames,
+          period,
+          panelOrder,
+          allowFallback,
+        }),
+      );
+    } catch {
+      /* The terminal also works when browser storage is unavailable. */
+    }
+  }, [
+    workspaceReady,
+    instrument,
+    chartType,
+    layout,
+    indicatorNames,
+    period,
+    panelOrder,
+    allowFallback,
+  ]);
+  useEffect(() => {
+    setSizeResult(null);
+  }, [
+    account,
+    riskPct,
+    entry,
+    stop,
+    leverage,
+    direction,
+    target,
+    riskFees,
+    riskSlippage,
+  ]);
   const fmt = (v: any, digits = 2) =>
     v == null || !Number.isFinite(Number(v))
       ? "—"
@@ -349,7 +433,11 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
   }, [tab, user]);
   useEffect(() => {
     loadMe();
-    setConsentOpen(localStorage.getItem("risk-consent") !== "2026-10-v1");
+    try {
+      setConsentOpen(localStorage.getItem("risk-consent") !== "2026-10-v1");
+    } catch {
+      setConsentOpen(true);
+    }
     const sp = new URLSearchParams(location.search);
     if (sp.get("verify"))
       perform("verify", async () => {
@@ -386,12 +474,23 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
   ]);
   useEffect(() => {
     let active = true;
+    setTickers([]);
+    setTickerUpdatedAt(null);
+    setTickerStatus("loading");
     const load = () =>
-      api(`markets?venue=${instrument.venue}&market=${instrument.market}`)
+      api(`markets?venue=${instrument.venue}&market=${instrument.market}`, {
+        signal: AbortSignal.timeout(12000),
+      })
         .then((r) => {
-          if (active) setTickers(r);
+          if (active) {
+            setTickers(r);
+            setTickerUpdatedAt(Date.now());
+            setTickerStatus(r.length ? "ready" : "unavailable");
+          }
         })
-        .catch(() => {});
+        .catch(() => {
+          if (active) setTickerStatus("unavailable");
+        });
     load();
     const id = setInterval(load, 15000);
     return () => {
@@ -434,16 +533,37 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
       .catch(() => {});
   }, []);
   useEffect(() => {
-    if (!user) return;
+    let active = true;
+    if (!user) {
+      setWatchlist([...majors]);
+      setNotifications([]);
+      return;
+    }
     api("watchlist")
       .then((rows) => {
-        if (rows.length) setWatchlist(rows.map((r: any) => r.symbol));
+        if (active)
+          setWatchlist([
+            ...new Set<string>(
+              rows
+                .filter(
+                  (row: any) =>
+                    row.venue === instrument.venue &&
+                    row.market === instrument.market,
+                )
+                .map((r: any) => r.symbol),
+            ),
+          ]);
       })
       .catch(() => {});
     api("notifications")
-      .then(setNotifications)
+      .then((rows) => {
+        if (active) setNotifications(rows);
+      })
       .catch(() => {});
-  }, [user?.id]);
+    return () => {
+      active = false;
+    };
+  }, [user?.id, instrument.venue, instrument.market]);
   const refreshRecords = async () => {
     if (!user) return;
     if (tab === "paper") {
@@ -545,8 +665,19 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
   };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest("input,textarea,select")) return;
-      if (e.key.toLowerCase() === "a") {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        if (!e.repeat) setCommandsOpen((open) => !open);
+        return;
+      }
+      if (
+        (e.target as HTMLElement).closest(
+          "input,textarea,select,[contenteditable=true],[role=dialog]",
+        )
+      )
+        return;
+      if (tab !== "terminal" || e.altKey) return;
+      if (e.key.toLowerCase() === "a" && !e.ctrlKey && !e.metaKey && !demo) {
         e.preventDefault();
         runAnalysis();
       }
@@ -558,7 +689,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     };
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [user, provider, model, instrument, mode, locale, agentId]);
+  }, [user, provider, model, instrument, mode, locale, agentId, tab, demo]);
   const updateInstrument = (part: any) =>
     setInstrument((i) => ({ ...i, ...part }));
   const price = data?.candles?.at(-1)?.close;
@@ -581,6 +712,58 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
         body: { ...instrument, symbol },
       }).catch((e: any) => error(e.message));
   };
+  const commands: TerminalCommand[] = [
+    ...nav.map(([key]) => ({
+      id: key,
+      label: t(key),
+      keywords: key,
+      detail: t("navigation"),
+      run: () => {
+        setTab(key);
+        setMobileNav(false);
+      },
+    })),
+    ...(user?.role === "admin"
+      ? [{ id: "admin", label: t("admin"), run: () => setTab("admin") }]
+      : []),
+    {
+      id: "calculator",
+      label: t("calculator"),
+      keywords: "risk position",
+      run: () => setRiskOpen(true),
+    },
+    {
+      id: "indicators",
+      label: t("indicators"),
+      run: () => setIndicatorOpen(true),
+    },
+    {
+      id: "theme",
+      label: t("toggleTheme"),
+      run: () => setTheme(theme === "dark" ? "light" : "dark"),
+    },
+    {
+      id: "reset",
+      label: t("resetWorkspace"),
+      detail: t("resetWorkspaceHint"),
+      run: () => {
+        applyWorkspace(defaultWorkspace);
+        setToast(t("workspaceReset"));
+      },
+    },
+    ...[...new Set([...watchlist, ...tickers.map((row) => row.symbol)])].map(
+      (symbol) => ({
+        id: "market-" + symbol,
+        label: symbol,
+        detail: instrument.venue + " · " + t(instrument.market),
+        keywords: "market chart",
+        run: () => {
+          updateInstrument({ symbol });
+          setTab("terminal");
+        },
+      }),
+    ),
+  ];
   const authSubmit = () =>
     perform("auth", async () => {
       if (oauthMfa) {
@@ -809,6 +992,16 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
         </a>
         <span className="workspace-label">{t("terminal")}</span>
         <div className="topbar-actions">
+          <button
+            className="command-trigger"
+            aria-label={t("commandPalette")}
+            aria-keyshortcuts="Control+k Meta+k"
+            onClick={() => setCommandsOpen(true)}
+          >
+            <Search size={17} />
+            <span className="desktop-only">{t("commandPalette")}</span>
+            <kbd className="desktop-only">Ctrl K</kbd>
+          </button>
           <select
             aria-label={t("language")}
             value={locale}
@@ -933,6 +1126,30 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
             )}
             <div className="strip-controls">{instrumentControls}</div>
           </div>
+          <div
+            className={
+              "market-data-status " +
+              (tickerStatus === "unavailable" ? "data-unavailable" : "")
+            }
+            role="status"
+          >
+            <span>
+              <i />
+              {t(
+                tickerStatus === "ready"
+                  ? "quotesUpdated"
+                  : tickerStatus === "loading"
+                    ? "quotesLoading"
+                    : tickerUpdatedAt
+                      ? "quotesStale"
+                      : "noMarketData",
+              )}
+              {tickerUpdatedAt && ` · ${date(tickerUpdatedAt)}`}
+            </span>
+            <small>
+              {instrument.venue} · {t(instrument.market)}
+            </small>
+          </div>
           {derivativeData?.value?.funding != null &&
             Math.abs(derivativeData.value.funding) > 0.001 && (
               <div className="event-notice">
@@ -995,6 +1212,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                           }
                           onClick={() => toggleWatch(row.symbol)}
                           aria-label={t("watchlist")}
+                          aria-pressed={watchlist.includes(row.symbol)}
                         >
                           <Star size={12} />
                         </button>
@@ -1726,15 +1944,6 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               {tab === "screener" && (
                 <>
                   <div className="form-row">
-                    <Field label={t("search")}>
-                      <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </Field>
-                    <Field label={t("minimumVolume")}>
-                      <NumberInput value={minVolume} set={setMinVolume} />
-                    </Field>
                     <Button
                       onClick={() => {
                         if (!protect()) return;
@@ -1788,35 +1997,16 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                         fmt(r.indicators?.ADX?.adx),
                       ]),
                     )}
-                  {table(
-                    [t("symbol"), t("price"), t("change"), t("volume")],
-                    tickers
-                      .filter(
-                        (x) =>
-                          x.volume >= minVolume &&
-                          x.symbol.includes(search.toUpperCase()),
-                      )
-                      .sort((a, b) => b.volume - a.volume)
-                      .slice(0, 100)
-                      .map((r) => [
-                        <button
-                          className="text-button"
-                          onClick={() => {
-                            updateInstrument({ symbol: r.symbol });
-                            setTab("terminal");
-                          }}
-                        >
-                          {r.symbol}
-                        </button>,
-                        fmt(r.price, r.price < 1 ? 6 : 2),
-                        <span
-                          className={r.change >= 0 ? "positive" : "negative"}
-                        >
-                          {fmt(r.change)}%
-                        </span>,
-                        compact(r.volume),
-                      ]),
-                  )}
+                  <MarketScreener
+                    tickers={tickers}
+                    watchlist={watchlist}
+                    locale={locale}
+                    onToggleWatch={toggleWatch}
+                    onSelect={(symbol) => {
+                      updateInstrument({ symbol });
+                      setTab("terminal");
+                    }}
+                  />
                 </>
               )}
               {!user &&
@@ -2058,42 +2248,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                   )}
                   {tab === "journal" && (
                     <>
-                      <div className="stats-grid">
-                        {stat(t("trades"), records.length)}
-                        {stat(
-                          t("pnl"),
-                          fmt(
-                            records.reduce(
-                              (s, r) =>
-                                s +
-                                (r.side === "LONG"
-                                  ? +r.exit - +r.entry
-                                  : +r.entry - +r.exit) *
-                                  +r.quantity -
-                                +r.fees,
-                              0,
-                            ),
-                          ),
-                        )}
-                        {stat(
-                          t("winRate"),
-                          records.length
-                            ? fmt(
-                                (records.filter(
-                                  (r) =>
-                                    (r.side === "LONG"
-                                      ? +r.exit - +r.entry
-                                      : +r.entry - +r.exit) *
-                                      +r.quantity -
-                                      +r.fees >
-                                    0,
-                                ).length /
-                                  records.length) *
-                                  100,
-                              ) + "%"
-                            : "—",
-                        )}
-                      </div>
+                      <JournalInsights records={records} locale={locale} />
                       <div className="form-card">
                         <div className="form-grid">
                           {["symbol", "entry", "exit", "quantity", "fees"].map(
@@ -2210,13 +2365,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                           r.side,
                           fmt(r.entry),
                           fmt(r.exit),
-                          fmt(
-                            (r.side === "LONG"
-                              ? +r.exit - +r.entry
-                              : +r.entry - +r.exit) *
-                              +r.quantity -
-                              +r.fees,
-                          ),
+                          fmt(tradePnl(r)),
                           r.notes,
                           <span>
                             {r.attachments?.map((a: any) => (
@@ -3012,7 +3161,9 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
           onClick={() =>
             perform("consent", async () => {
               if (user) await api("consents", { method: "POST", body: {} });
-              localStorage.setItem("risk-consent", "2026-10-v1");
+              try {
+                localStorage.setItem("risk-consent", "2026-10-v1");
+              } catch {}
               setConsentOpen(false);
             })
           }
@@ -3126,6 +3277,11 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
           />
         )}
       </Modal>
+      <CommandPalette
+        open={commandsOpen}
+        onOpenChange={setCommandsOpen}
+        commands={commands}
+      />
       <Modal
         open={riskOpen}
         onOpenChange={setRiskOpen}
@@ -3144,6 +3300,15 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
           </Field>
           <Field label={t("stop")}>
             <NumberInput value={stop} set={setStop} />
+          </Field>
+          <Field label={t("targetPrice")}>
+            <NumberInput value={target} set={setTarget} />
+          </Field>
+          <Field label={t("feeBps")}>
+            <NumberInput value={riskFees} set={setRiskFees} />
+          </Field>
+          <Field label={t("slippageBps")}>
+            <NumberInput value={riskSlippage} set={setRiskSlippage} />
           </Field>
           <Field label={t("leverage")}>
             <NumberInput value={leverage} set={setLeverage} />
@@ -3164,7 +3329,17 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               setSizeResult(
                 await api("risk", {
                   method: "POST",
-                  body: { account, riskPct, entry, stop, leverage, direction },
+                  body: {
+                    account,
+                    riskPct,
+                    entry,
+                    stop,
+                    leverage,
+                    direction,
+                    feeBps: riskFees,
+                    slippageBps: riskSlippage,
+                    ...(target !== "" ? { target } : {}),
+                  },
                 }),
               ),
             )
@@ -3179,7 +3354,21 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               {stat(t("notional"), fmt(sizeResult.notional))}
               {stat(t("margin"), fmt(sizeResult.margin))}
               {stat(t("maxLoss"), fmt(sizeResult.maxLoss))}
+              {stat(t("breakEvenPrice"), fmt(sizeResult.breakEvenPrice, 6))}
+              {sizeResult.target != null && (
+                <>
+                  {stat(t("targetCosts"), fmt(sizeResult.targetCosts))}
+                  {stat(t("netTargetProfit"), fmt(sizeResult.netProfit))}
+                  {stat(t("netRewardRisk"), fmt(sizeResult.rewardRisk) + " R")}
+                </>
+              )}
             </div>
+            {sizeResult.warnings.map((warning: string) => (
+              <p className="risk-warning" key={warning}>
+                {t("riskWarning_" + warning)}
+              </p>
+            ))}
+            <p className="muted">{t("riskCostHint")}</p>
             <p className="muted">{t("liquidation")}</p>
           </>
         )}

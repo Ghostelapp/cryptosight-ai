@@ -2,7 +2,7 @@
 
 A full-stack crypto analysis terminal built with Next.js, React, TypeScript, KLineCharts, PostgreSQL and Redis. Includes a real market data layer, saved drawing tools, indicators, encrypted BYOK AI analysis, signed Web3 wallet registration/login, risk tools, alerts, research and account settings in English, Polish and German. It never submits exchange trade orders.
 
-The source and production build are delivered. This is a release candidate requiring operator configuration and staging verification before public use. Live exchange access and browser E2E execution could not be verified in this environment; see [validation](docs/VALIDATION.md).
+The source and production build are delivered. This is a release candidate requiring operator configuration and staging verification before public use. Local unit/integration tests, desktop/mobile browser flows and production HTTP smoke checks have been executed; external-service limitations remain documented in [validation](docs/VALIDATION.md).
 
 ## Local development
 
@@ -30,7 +30,7 @@ npm run test:e2e
 RUN_LIVE_TESTS=true npm test
 ```
 
-`contracts:check` also requires `pip install -r tests/requirements.txt`. Live tests make genuine venue requests and may fail when access is restricted.
+`contracts:check` also requires `pip install -r tests/requirements.txt`. It uses `python` on Windows and `python3` elsewhere; set `PYTHON` to select another interpreter or a virtual environment. Live tests make genuine venue requests and may fail when access is restricted.
 
 ## Docker deployment
 
@@ -68,6 +68,8 @@ Optional: Google OAuth, RSS, economic calendar, normalized on-chain/sentiment/li
 - `deploy`, `scripts`, `.github/workflows`: release operations and CI.
 
 Architecture and decisions: [ARCHITECTURE.md](docs/ARCHITECTURE.md). Coverage and limitations: [PHASES.md](docs/PHASES.md). REST/socket details: [API.md](docs/API.md).
+
+Terminal productivity: **Ctrl/Cmd+K** searches pages, tools and markets. Chart preferences restore in this browser and can be reset from quick commands. The screener adds movement/watchlist filters and sortable columns; the journal adds net-performance metrics, a cumulative PnL curve and CSV export. The position calculator supports optional targets and reward/risk after costs. See [PRODUCTIVITY-REVIEW.md](docs/PRODUCTIVITY-REVIEW.md) for calculation scope and validation.
 
 ## Administration
 

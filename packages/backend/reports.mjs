@@ -1,6 +1,7 @@
 import { messages } from "./localization.mjs";
 import PDFDocument from "pdfkit";
 import { resolve } from "node:path";
+import { projectRoot } from "./paths.mjs";
 export async function report(result, locale = "en") {
   const doc = new PDFDocument({ margin: 45, bufferPages: true }),
     chunks = [];
@@ -9,11 +10,7 @@ export async function report(result, locale = "en") {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
   });
-  const root =
-    process.env.PROJECT_ROOT ||
-    (process.cwd().endsWith("/apps/web")
-      ? resolve(process.cwd(), "../..")
-      : process.cwd());
+  const root = projectRoot();
   doc.font(resolve(root, "apps/web/public/fonts/DejaVuSans.ttf"));
   const copy = messages(locale);
   const labels = {

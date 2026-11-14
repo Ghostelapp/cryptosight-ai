@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import { PGlite } from "@electric-sql/pglite";
 import { readFile, mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { projectRoot } from "./paths.mjs";
 let initialized;
 const globalKey = Symbol.for("cryptosight.db");
 export async function db() {
@@ -40,13 +41,7 @@ export async function db() {
       )
         throw new Error("migrations_required");
       let sql = await readFile(
-        resolve(
-          process.env.PROJECT_ROOT ||
-            (process.cwd().endsWith("/apps/web")
-              ? resolve(process.cwd(), "../..")
-              : process.cwd()),
-          "db/001_initial.sql",
-        ),
+        resolve(projectRoot(), "db/001_initial.sql"),
         "utf8",
       );
       if (client instanceof PGlite)
@@ -65,14 +60,7 @@ export async function db() {
         "005_admin.sql",
       ]) {
         const migration = await readFile(
-          resolve(
-            process.env.PROJECT_ROOT ||
-              (process.cwd().endsWith("/apps/web")
-                ? resolve(process.cwd(), "../..")
-                : process.cwd()),
-            "db",
-            file,
-          ),
+          resolve(projectRoot(), "db", file),
           "utf8",
         );
         if (client instanceof PGlite) await client.exec(migration);
