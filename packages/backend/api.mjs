@@ -40,11 +40,7 @@ import {
 } from "../market/providers.mjs";
 import { indicators } from "../quant/indicators.mjs";
 import { storeCandles } from "./market-storage.mjs";
-import {
-  positionSize,
-  correlation,
-  settlePaperPosition,
-} from "../quant/research.mjs";
+import { positionSize, correlation } from "../quant/research.mjs";
 import { snapshot, llm, providers } from "../ai/agent.mjs";
 import { queueAnalysis, credential, estimate, withAIBudget } from "./jobs.mjs";
 import { cached, redisClient } from "./cache.mjs";
@@ -56,6 +52,7 @@ import {
   exchangePortfolio,
   exchangeTrades,
 } from "./exchange.mjs";
+import { placePaper, closePaper, cancelPaper, protectPaper } from "./paper.mjs";
 import { paperOverview } from "./portfolio.mjs";
 const uuid = z.string().uuid(),
   text = z.string().min(1).max(4000),
@@ -1198,144 +1195,45 @@ export async function handle(req) {
       const b = instrument
         .extend({
           direction: z.enum(["LONG", "SHORT"]),
-          quantity: positive.max(1000000),
+          quantity: positive.min(1e-8).max(1000000),
+          orderType: z.enum(["market", "limit"]).default("market"),
+          limitPrice: positive.optional(),
+          stopLoss: positive.nullable().optional(),
+          takeProfit: positive.nullable().optional(),
         })
+        .strict()
         .parse(body);
-      const book = await depth(b);
-      if (Date.now() - book.timestamp > 10000) throw new Error("stale_quote");
-      const levels = b.direction === "LONG" ? book.asks : book.bids;
-      let remaining = b.quantity,
-        notional = 0;
-      for (const [price, size] of levels) {
-        const fill = Math.min(remaining, size);
-        notional += fill * price;
-        remaining -= fill;
-        if (remaining <= 1e-10) break;
-      }
-      if (remaining > 1e-10) throw new Error("insufficient_depth");
-      const fillPrice = notional / b.quantity,
-        fees = notional * 0.001,
-        key = z
-          .string()
-          .min(8)
-          .max(150)
-          .parse(req.headers.get("idempotency-key"));
-      const result = await transaction(async (tx) => {
-        const a = (
-          await tx.query(
-            "SELECT * FROM paper_accounts WHERE user_id=$1 FOR UPDATE",
-            [uid],
-          )
-        ).rows[0];
-        const old = (
-          await tx.query(
-            "SELECT * FROM paper_orders WHERE account_id=$1 AND idempotency_key=$2",
-            [a.id, key],
-          )
-        ).rows[0];
-        if (old) return old;
-        const daily = (
-          await tx.query(
-            "SELECT COALESCE(SUM(pnl),0) AS pnl FROM paper_orders WHERE account_id=$1 AND closed_at>=CURRENT_DATE",
-            [a.id],
-          )
-        ).rows[0];
-        const total = (
-          await tx.query(
-            "SELECT COALESCE(SUM(pnl),0) AS pnl FROM paper_orders WHERE account_id=$1 AND closed_at IS NOT NULL",
-            [a.id],
-          )
-        ).rows[0];
-        const realized = +a.initial_balance + +total.pnl;
-        if (
-          ((+a.peak_equity - realized) / +a.peak_equity) * 100 >=
-          (user.settings.maxDrawdownPct || 10)
-        )
-          throw new Error("max_drawdown_limit");
-        if (+daily.pnl < -(user.settings.dailyLossLimit || 500))
-          throw new Error("daily_loss_limit");
-        if (+a.balance < notional + fees)
-          throw new Error("insufficient_balance");
-        await tx.query(
-          "UPDATE paper_accounts SET balance=balance-$1,version=version+1 WHERE id=$2",
-          [notional + fees, a.id],
-        );
-        return (
-          await tx.query(
-            "INSERT INTO paper_orders(account_id,symbol,direction,quantity,order_type,fill_price,fees,status,idempotency_key,venue,market) VALUES($1,$2,$3,$4,'market',$5,$6,'filled',$7,$8,$9) RETURNING *",
-            [
-              a.id,
-              b.symbol,
-              b.direction,
-              b.quantity,
-              fillPrice,
-              fees,
-              key,
-              b.venue,
-              b.market,
-            ],
-          )
-        ).rows[0];
-      });
-      return json(result);
+      if (b.orderType === "limit" && !b.limitPrice)
+        throw new Error("invalid_risk");
+      const key = z
+        .string()
+        .min(8)
+        .max(150)
+        .parse(req.headers.get("idempotency-key"));
+      return json(await placePaper(user, b, key));
+    }
+    if (parts[0] === "paper-cancel" && method === "POST")
+      return json(await cancelPaper(uid, id));
+    if (parts[0] === "paper-protection" && method === "PATCH") {
+      const b = z
+        .object({
+          version: z.number().int().positive(),
+          stopLoss: positive.nullable(),
+          takeProfit: positive.nullable(),
+        })
+        .strict()
+        .parse(body);
+      return json(await protectPaper(uid, id, b));
     }
     if (parts[0] === "paper-close" && method === "POST") {
-      const order = (
-        await take(
-          "SELECT o.* FROM paper_orders o JOIN paper_accounts a ON a.id=o.account_id WHERE o.id=$1 AND a.user_id=$2",
-          [id, uid],
-        )
-      )[0];
-      if (!order) throw new Error("not_found");
-      const book = await depth({
-        venue: order.venue,
-        market: order.market,
-        symbol: order.symbol,
-      });
-      if (Date.now() - book.timestamp > 10000) throw new Error("stale_quote");
-      const levels = order.direction === "LONG" ? book.bids : book.asks;
-      let remaining = +order.quantity,
-        value = 0;
-      for (const [price, size] of levels) {
-        const n = Math.min(remaining, size);
-        value += n * price;
-        remaining -= n;
-        if (remaining <= 1e-10) break;
-      }
-      if (remaining > 1e-10) throw new Error("insufficient_depth");
-      const price = value / +order.quantity;
-      const settlement = settlePaperPosition({
-        direction: order.direction,
-        entry: +order.fill_price,
-        exit: price,
-        quantity: +order.quantity,
-        entryFees: +order.fees,
-      });
-      await transaction(async (tx) => {
-        const o = (
-          await tx.query("SELECT * FROM paper_orders WHERE id=$1 FOR UPDATE", [
-            id,
-          ])
-        ).rows[0];
-        if (o.closed_at) throw new Error("already_closed");
-        await tx.query(
-          "UPDATE paper_accounts SET balance=balance+$1,version=version+1 WHERE id=$2",
-          [settlement.returnedCollateral, o.account_id],
-        );
-        await tx.query(
-          "UPDATE paper_orders SET closed_at=now(),close_price=$1,pnl=$2,status='closed',collateral_exhausted=$4 WHERE id=$3",
-          [price, settlement.pnl, id, settlement.collateralExhausted],
-        );
-        await tx.query(
-          "UPDATE paper_accounts SET peak_equity=GREATEST(peak_equity,initial_balance+(SELECT COALESCE(SUM(pnl),0) FROM paper_orders WHERE account_id=$1 AND closed_at IS NOT NULL)) WHERE id=$1",
-          [o.account_id],
-        );
-      });
-      return json({
-        closed: true,
-        collateral_exhausted: settlement.collateralExhausted,
-        settlement_model: settlement.model,
-      });
+      const b = z
+        .object({ quantity: positive.min(1e-8).optional() })
+        .strict()
+        .parse(body);
+      const header = req.headers.get("idempotency-key");
+      if (b.quantity != null && !header) throw new Error("invalid_risk");
+      const key = header ? z.string().min(8).max(150).parse(header) : undefined;
+      return json(await closePaper(uid, id, { ...b, key }));
     }
     if (parts[0] === "backtests") {
       if (method === "GET")
@@ -1627,6 +1525,10 @@ export async function handle(req) {
       );
       out.paper_orders = await take(
         "SELECT o.* FROM paper_orders o JOIN paper_accounts a ON a.id=o.account_id WHERE a.user_id=$1",
+        [uid],
+      );
+      out.paper_exits = await take(
+        "SELECT e.* FROM paper_exits e JOIN paper_orders o ON o.id=e.order_id JOIN paper_accounts a ON a.id=o.account_id WHERE a.user_id=$1",
         [uid],
       );
       out.signals = await take(

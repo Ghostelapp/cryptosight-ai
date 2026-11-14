@@ -410,6 +410,47 @@ export const MarketChart = forwardRef(function MarketChart(
       timer: any,
       heartbeat: any,
       attempt = 0;
+    const narrow = window.matchMedia("(max-width: 850px)");
+    const applyResponsiveStyles = () => {
+      const c = chart.current;
+      if (!c) return;
+      const small = narrow.matches || compact;
+      c.setStyles({
+        candle: {
+          tooltip: {
+            showRule: "follow_cross",
+            showType: "rect",
+            text: { size: small ? 10 : 12 },
+            rect: {
+              paddingLeft: 8,
+              paddingRight: 8,
+              paddingTop: 6,
+              paddingBottom: 6,
+            },
+          },
+          priceMark: {
+            high: { show: !small, textSize: 10 },
+            low: { show: !small, textSize: 10 },
+            last: { text: { size: small ? 10 : 12 } },
+          },
+        },
+        indicator: {
+          tooltip: {
+            showRule: small ? "none" : "follow_cross",
+            showType: "rect",
+            text: { size: small ? 10 : 12 },
+          },
+        },
+        xAxis: { tickText: { size: small ? 10 : 12 } },
+        yAxis: { tickText: { size: small ? 10 : 12 } },
+        crosshair: {
+          horizontal: { text: { size: small ? 10 : 12 } },
+          vertical: { text: { size: small ? 10 : 12 } },
+        },
+      });
+      c.resize();
+    };
+    narrow.addEventListener("change", applyResponsiveStyles);
     const abort = new AbortController();
     setLoading(true);
     setError("");
@@ -713,6 +754,9 @@ export const MarketChart = forwardRef(function MarketChart(
         if (dead) return;
         ch?.applyNewData(transformed(d.candles));
         ch?.setPriceVolumePrecision(d.candles.at(-1)?.close < 1 ? 6 : 2, 2);
+        ch?.setOffsetRightDistance(narrow.matches || compact ? 24 : 50);
+        ch?.setBarSpace(narrow.matches || compact ? 6 : 8);
+        applyResponsiveStyles();
         onData?.(d);
         setLoading(false);
         if (demo) setConnection("demo");
@@ -753,6 +797,7 @@ export const MarketChart = forwardRef(function MarketChart(
       clearInterval(heartbeat);
       ws?.close();
       resize.disconnect();
+      narrow.removeEventListener("change", applyResponsiveStyles);
       if (chart.current && element.current)
         lib.current?.dispose(element.current);
       chart.current = null;
@@ -770,11 +815,11 @@ export const MarketChart = forwardRef(function MarketChart(
     period,
     locale,
     allowFallback,
+    compact,
   ]);
   useEffect(() => {
     const c = chart.current;
     if (!c) return;
-    const pane = ["RSI", "MACD", "CCI", "OBV"];
     const instances = c.getIndicatorByPaneId();
     if (instances)
       for (const paneId of Array.from(instances.keys()))
@@ -783,6 +828,7 @@ export const MarketChart = forwardRef(function MarketChart(
       c.createIndicator(
         {
           name,
+          precision: priceIndicators.includes(name) ? undefined : 2,
           calcParams:
             name === "EMA" || name === "MA"
               ? [period, 50, 100, 200]
@@ -862,6 +908,15 @@ export const MarketChart = forwardRef(function MarketChart(
   }
   return (
     <div className={"chart-shell " + (compact ? "compact" : "")}>
+      <div className="chart-indicator-labels" aria-label={t("indicators")}>
+        {indicatorNames.map((name: string) => (
+          <span key={name}>
+            {name.replace(/^CS_/, "")} (
+            {name === "EMA" || name === "MA" ? `${period}/50/100/200` : period})
+          </span>
+        ))}
+        <span>VOL</span>
+      </div>
       <div className="chart-canvas" ref={element} />
       {compact && <span className="chart-frame">{instrument.timeframe}</span>}
       {loading && (

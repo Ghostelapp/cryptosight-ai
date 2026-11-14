@@ -74,3 +74,7 @@ Terminal productivity: **Ctrl/Cmd+K** searches pages, tools and markets. Chart p
 ## Administration
 
 The admin panel manages encrypted shared AI-agent keys/models, agent access, users/roles/suspension, AI limits/pause, localized announcements, queued analyses and audit records. Apply migration 005, register your account, then run `npm run admin:bootstrap -- YOUR_EXISTING_USER_UUID` on the server and sign in again. There is no default production admin password. See [docs/ADMIN.md](docs/ADMIN.md) for Docker commands, 2FA, key handling and behavior of queued/running jobs.
+
+## Advanced paper trading
+
+Market/limit orders, reserved funds, editable SL/TP, partial exits, risk sizing and execution history are supported. **Apply migration 006 and run the persistent worker** for automatic limit fills and protective exits, including when the browser is closed. See [docs/PAPER-TRADING.md](docs/PAPER-TRADING.md) for the execution model, Railway configuration and verification limits.

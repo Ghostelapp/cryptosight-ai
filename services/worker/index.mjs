@@ -1,3 +1,4 @@
+import { paperTick } from "../../packages/backend/paper.mjs";
 import { recordFailure } from "../../packages/backend/observability.mjs";
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
@@ -20,6 +21,20 @@ if (!process.env.DATABASE_URL)
   throw new Error(
     "Separate worker requires PostgreSQL. Embedded development uses the web-process worker.",
   );
+let paperBusy = false;
+async function paperMaintenance() {
+  if (paperBusy) return;
+  paperBusy = true;
+  try {
+    const result = await paperTick();
+    failures += result.failures;
+  } catch {
+    failures++;
+    recordFailure("worker_paper", randomUUID());
+  } finally {
+    paperBusy = false;
+  }
+}
 let analyses = 0,
   maintenanceBusy = false,
   lastTick = 0,
@@ -70,6 +85,7 @@ if (process.env.REDIS_URL) {
   for (const [name, every, fn, concurrency] of [
     ["cryptosight-analysis", 1000, analysisTick, 4],
     ["cryptosight-maintenance", 10000, maintenance, 1],
+    ["cryptosight-paper", 5000, paperMaintenance, 1],
   ]) {
     const queue = new Queue(name, { connection });
     queues.push(queue);
@@ -81,6 +97,8 @@ if (process.env.REDIS_URL) {
     workers.push(new Worker(name, fn, { connection, concurrency }));
   }
 } else {
+  setInterval(paperMaintenance, 5000);
+  await paperMaintenance();
   setInterval(analysisTick, 1000);
   setInterval(maintenance, 10000);
   await maintenance();
