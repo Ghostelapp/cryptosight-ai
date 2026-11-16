@@ -10,6 +10,7 @@ import { encryptKey, decryptKey } from "../security/key-vault.mjs";
 import { TOTP } from "@otplib/totp";
 import { NodeCryptoPlugin } from "@otplib/plugin-crypto-node";
 import { ScureBase32Plugin } from "@otplib/plugin-base32-scure";
+import { mobileTokenPattern } from "../mobile/protocol.mjs";
 const scrypt = promisify(scryptCb);
 export const hash = (t) => createHash("sha256").update(t).digest("hex");
 export const cookieName =
@@ -49,8 +50,18 @@ export function cookies(req) {
       .map((p) => p.trim().split("=")),
   );
 }
+export function mobileToken(req) {
+  const header = req.headers.get("authorization") || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  return mobileTokenPattern.test(token) ? token : null;
+}
+export function sessionToken(req) {
+  if (req.headers.has("authorization")) return mobileToken(req);
+  const token = cookies(req)[cookieName] || "";
+  return /^[a-f0-9]{64}$/.test(token) ? token : null;
+}
 export async function session(req) {
-  const token = cookies(req)[cookieName];
+  const token = sessionToken(req);
   if (!token) return null;
   const r = await query(
     "SELECT u.id,u.email,u.locale,u.timezone,u.tier,u.email_verified,u.settings,u.role,u.suspended,(SELECT address FROM wallet_identities WHERE user_id=u.id ORDER BY created_at LIMIT 1) AS wallet_address,(u.password_hash IS NOT NULL) AS has_password,(u.totp_envelope IS NOT NULL) AS two_factor FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now() AND u.deleted_at IS NULL AND u.suspended=false",

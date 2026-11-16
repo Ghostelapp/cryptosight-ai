@@ -1,8 +1,8 @@
 {
   "name": "CryptoSight AI",
-  "version": "1.4.0-rc.1",
+  "version": "1.5.0-rc.1",
   "validation": {
-    "unit_integration_passed": 71,
+    "unit_integration_passed": 85,
     "live_tests_skipped": 3,
     "strict_typescript": "passed",
     "production_build": "passed",
@@ -12,30 +12,45 @@
     "synthetic_gateway_symbols": 51,
     "synthetic_transport_p95_ms": 1,
     "production_wallet_http_flow": "passed",
-    "browser_scenarios_discovered": 18,
+    "browser_scenarios_discovered": 20,
     "mobile_browser_execution": "passed: Chromium desktop/mobile flows and screenshots",
     "production_admin_http_flow": "passed",
     "workflow_static_validation": "passed: actionlint 1.7.12",
     "gateway_handshake_limits": "passed",
     "repeated_paper_migration": "passed",
-    "remote_ci": "blocked: GitHub account locked due to billing; jobs did not start"
+    "remote_ci": "blocked: GitHub account locked due to billing; jobs did not start",
+    "native_typescript": "passed",
+    "native_lint": "passed",
+    "native_hermes_export": "passed: Android and iOS",
+    "native_react_isolation": "Hermes contains React 19.3.0; React 19.3.1 and backend source absent",
+    "expo_doctor": "19/20: intentional isolated web/native React versions",
+    "android_native_build": "pending local toolchain verification"
   },
   "unverified": [
     "live exchange access and end-to-end latency",
     "Docker/PostgreSQL/Redis deployment and restore",
     "credential-dependent external integrations",
-    "GitHub-hosted CI execution: account billing lock"
+    "GitHub-hosted CI execution: account billing lock",
+    "iOS native compilation, signing and real-device biometrics"
   ],
   "automatic_exchange_execution": false,
   "wallet_auth": {
     "protocol": "EIP-4361",
     "scope": "injected EVM EOA, EIP-1193/EIP-6963",
-    "actions": ["register", "login", "link", "unlink"],
+    "actions": [
+      "register",
+      "login",
+      "link",
+      "unlink"
+    ],
     "mfa": "TOTP enforced",
     "smart_contract_wallets": false
   },
   "administration": {
-    "roles": ["user", "admin"],
+    "roles": [
+      "user",
+      "admin"
+    ],
     "shared_ai_agents": true,
     "encrypted_write_only_keys": true,
     "account_suspension": true,
@@ -53,7 +68,7 @@
     "automatic_execution": "persistent worker required; 5-second sampling",
     "leverage": 1
   },
-  "validated_at": "2026-11-14",
+  "validated_at": "2026-11-16",
   "integrated_sources": {
     "main": "bd3c9e476ec3b8eac689510ad2306eb6fe54a202",
     "terminal": "67f82f5ef138b692c47bdef2312066cd0aa80148",
@@ -65,6 +80,21 @@
     "react_dom": "19.3.1",
     "zod": "4.6.7",
     "nodemailer": "10.5.0",
-    "sentry_node": "11.12.0"
+    "sentry_node": "11.12.0",
+    "expo": "58.0.25",
+    "react_native": "0.88.1",
+    "native_react": "19.3.0"
+  },
+  "native_mobile": {
+    "version": "1.0.0",
+    "framework": "Expo 58 / React Native 0.88",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "authentication": "one-use PKCE browser pairing; seven-day SecureStore bearer session",
+    "required_migration": "007_mobile_login.sql",
+    "native_push": false,
+    "ios_signed_build": "requires macOS/EAS and owner signing credentials"
   }
 }

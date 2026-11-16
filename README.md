@@ -8,6 +8,8 @@ The 2026-11-14 integrated update combines advanced paper trading, mobile chart f
 
 ## Local development
 
+Native iOS and Android apps are now in `apps/mobile`. Use `npm run mobile:start` for development and `npm run mobile:apk -- --local` for an Android test APK. They connect to the same backend through one-use PKCE account pairing. Setup, EAS signing and platform limitations: [NATIVE-MOBILE.md](docs/NATIVE-MOBILE.md).
+
 Node.js 24 is required. From this directory:
 
 ```sh

@@ -16,6 +16,9 @@ jobs:
           python-version: '3.12'
       - run: npm ci
       - run: npm test
+      - run: npm run mobile:check
+      - run: npm run mobile:lint
+      - run: npm run mobile:export
       - run: pip install -r tests/requirements.txt
       - run: npm run contracts:check
       - run: npm run build

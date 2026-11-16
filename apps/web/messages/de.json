@@ -464,5 +464,12 @@
   "riskWarning_high_leverage": "Ein hoher Hebel erhöht die Empfindlichkeit gegenüber Kursbewegungen.",
   "riskWarning_high_account_risk": "Dieser Trade riskiert mindestens 2% des Kontokapitals.",
   "riskWarning_collateral_capped": "Die Positionsgröße wurde auf die verfügbare Sicherheit begrenzt.",
-  "riskWarning_target_below_costs": "Das Ziel deckt die geschätzten Handelskosten nicht."
+  "riskWarning_target_below_costs": "Das Ziel deckt die geschätzten Handelskosten nicht.",
+  "mobileConnectTitle": "Mobile App verbinden",
+  "mobileConnectHint": "Nur bestätigen, wenn Sie die Anmeldung gerade in der CryptoSight AI App auf Ihrem Telefon gestartet haben. Passwort und Anbieterschlüssel bleiben auf dem Server.",
+  "mobileConnectExpiry": "Anfrage gültig bis",
+  "mobileConnectAction": "Dieses Konto verbinden",
+  "mobileConnectExpired": "Diese Anmeldeanfrage ist ungültig oder abgelaufen. Starten Sie erneut in der mobilen App.",
+  "mobileConnectSuccess": "Konto verbunden. Kehren Sie zur mobilen App zurück.",
+  "mobileConnectOpen": "CryptoSight AI öffnen"
 }

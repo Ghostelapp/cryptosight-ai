@@ -3,6 +3,9 @@ export default defineConfig({
   testDir: "./tests/e2e",
   workers: 1,
   timeout: 45000,
+  // Cold dev-route compilation and password derivation can overlap on CI hosts.
+  // These assertions verify completed UI flows, not response-time benchmarks.
+  expect: { timeout: 15000 },
   use: {
     baseURL: "http://127.0.0.1:3100",
     headless: true,

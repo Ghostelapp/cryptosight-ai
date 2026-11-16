@@ -53,6 +53,18 @@ export const routes = {
   "/auth/reset": [
     "post"
   ],
+  "/auth/mobile/start": [
+    "post"
+  ],
+  "/auth/mobile/request/{id}": [
+    "get"
+  ],
+  "/auth/mobile/authorize": [
+    "post"
+  ],
+  "/auth/mobile/exchange": [
+    "post"
+  ],
   "/auth/me": [
     "get"
   ],

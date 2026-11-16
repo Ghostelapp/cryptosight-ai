@@ -72,7 +72,7 @@ test("risk contract accepts the optional target and requires supported leverage"
   assert.equal(risk({ ...input, target: -10 }), false);
   assert.equal(risk({ ...input, leverage: 0.5 }), false);
 });
-test("API operation IDs unique and private routes require sessions", () => {
+test("API operation IDs unique and private routes require sessions or native bearer", () => {
   const api = read("packages/contracts/openapi.json");
   const ids = [];
   for (const [path, methods] of Object.entries(api.paths))
@@ -92,7 +92,7 @@ test("API operation IDs unique and private routes require sessions", () => {
             "/billing/webhook",
           ].includes(path) || path.startsWith("/auth/"),
         );
-      else assert.deepEqual(op.security, [{ session: [] }]);
+      else assert.deepEqual(op.security, [{ session: [] }, { mobileBearer: [] }]);
     }
   assert.equal(new Set(ids).size, ids.length);
 });

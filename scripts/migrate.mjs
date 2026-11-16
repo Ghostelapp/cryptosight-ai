@@ -18,6 +18,7 @@ try {
     "004_functional_fixes.sql",
     "005_admin.sql",
     "006_paper_trading.sql",
+    "007_mobile_login.sql",
   ]) {
     if (
       (

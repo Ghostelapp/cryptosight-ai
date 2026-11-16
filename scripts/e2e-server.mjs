@@ -1,5 +1,5 @@
 // Isolated browser-test fixture, never a production bootstrap path.
-import { mkdtemp, mkdir } from "node:fs/promises";
+import { mkdtemp, mkdir, rename } from "node:fs/promises";
 import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -8,11 +8,26 @@ if (process.env.NODE_ENV === "production")
 if (process.env.DATABASE_URL)
   throw new Error("Test fixture requires an isolated local database");
 await mkdir(".runtime", { recursive: true });
+const fixtureRoot = resolve(await mkdtemp(".runtime/e2e-"));
+// A stale Turbopack dev cache can serve HTML with missing client chunks after
+// switching between production and browser checks. Preserve it outside Next's
+// output before starting this isolated test server.
+const workspace = resolve(process.cwd()),
+  devCache = resolve(workspace, "apps/web/.next/dev");
+if (
+  !devCache.startsWith(workspace + (process.platform === "win32" ? "\\" : "/"))
+)
+  throw new Error("Invalid test cache path");
+try {
+  await rename(devCache, resolve(fixtureRoot, "previous-next-dev"));
+} catch (error) {
+  if (error.code !== "ENOENT")
+    throw new Error("Stop the local Next.js dev server before browser tests", {
+      cause: error,
+    });
+}
 process.env.NODE_ENV = "test";
-process.env.DEV_DATABASE_PATH = resolve(
-  await mkdtemp(".runtime/e2e-"),
-  "database",
-);
+process.env.DEV_DATABASE_PATH = resolve(fixtureRoot, "database");
 process.env.PROJECT_ROOT = process.cwd();
 process.env.BYOK_ENCRYPTION_KEY = randomBytes(32).toString("base64");
 process.env.SESSION_SECRET = randomBytes(32).toString("hex");

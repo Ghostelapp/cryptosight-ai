@@ -2,12 +2,13 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 COPY apps/web/package.json ./apps/web/package.json
-RUN npm ci
+COPY apps/mobile/package.json ./apps/mobile/package.json
+RUN npm ci --workspace apps/web --include-workspace-root
 COPY . .
 ARG NEXT_PUBLIC_GATEWAY_URL
 ENV NEXT_TELEMETRY_DISABLED=1 NEXT_PUBLIC_GATEWAY_URL=$NEXT_PUBLIC_GATEWAY_URL
 RUN npm run build
-RUN npm prune --omit=dev
+RUN npm prune --omit=dev --workspace apps/web --include-workspace-root
 
 FROM node:24-alpine AS runtime
 WORKDIR /app

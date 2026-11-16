@@ -9,3 +9,7 @@ node_modules
 playwright-report
 test-results
 *.zip
+apps/mobile/android
+apps/mobile/ios
+apps/mobile/.expo
+apps/mobile/dist

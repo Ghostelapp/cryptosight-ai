@@ -1,0 +1,290 @@
+import { useRef, useState } from "react";
+import * as Crypto from "expo-crypto";
+import { positionSize } from "../../../packages/quant/research.mjs";
+import { mutationIntents } from "./api.mjs";
+import {
+  AuthGate,
+  Button,
+  Card,
+  Choices,
+  Field,
+  Heading,
+  Label,
+  Loading,
+  Metrics,
+  Notice,
+  useMobile,
+  useRemote,
+} from "./ui";
+import { errorText, number } from "./i18n";
+import type { Agent } from "./types";
+
+function Research() {
+  const { api, user, t, locale, instrument, busy, run } = useMobile();
+  const agents = useRemote<Agent[]>("agents", !!user);
+  const history = useRemote<any[]>("analyses", !!user, 10000);
+  const [agentId, setAgent] = useState(""),
+    [provider, setProvider] = useState("openai"),
+    [model, setModel] = useState(""),
+    [mode, setMode] = useState("quick"),
+    [jobId, setJob] = useState("");
+  const job = useRemote<any>("analyses/" + jobId, !!jobId, 4000);
+  const intents = useRef(mutationIntents(Crypto.randomUUID));
+  const selected = agents.data?.find((a) => a.id === agentId),
+    result = job.data?.result;
+  const submit = () =>
+    void run(async () => {
+      const body = {
+        ...instrument,
+        locale,
+        mode,
+        provider: selected?.provider || provider,
+        model: selected?.model || model.trim(),
+        ...(selected ? { agentId: selected.id } : {}),
+      };
+      const response = await api.request("analyses", {
+        method: "POST",
+        body,
+        key: intents.current.key("analysis", body),
+      });
+      intents.current.done("analysis");
+      setJob(response.id);
+      await history.refetch();
+    });
+  return (
+    <>
+      <Card>
+        <Heading>
+          {t("analysis")} · {instrument.symbol}
+        </Heading>
+        <Label muted>
+          {instrument.venue} · {instrument.market} · {instrument.timeframe}
+        </Label>
+        <Notice>{t("mobileAiHint")}</Notice>
+        {!!agents.data?.length && (
+          <Choices
+            label={t("adminAgent")}
+            value={agentId}
+            onChange={setAgent}
+            options={[
+              { value: "", label: t("mobileNoAgent") },
+              ...agents.data.map((a) => ({ value: a.id, label: a.name })),
+            ]}
+          />
+        )}
+        {!selected && (
+          <>
+            <Choices
+              label={t("provider")}
+              value={provider}
+              onChange={setProvider}
+              options={[
+                "openai",
+                "gemini",
+                "anthropic",
+                "openrouter",
+                "local",
+              ].map((value) => ({ value, label: value }))}
+            />
+            <Field
+              label={t("model")}
+              value={model}
+              onChangeText={setModel}
+              placeholder={t("mobileModelHint")}
+              autoCapitalize="none"
+              maxLength={100}
+            />
+          </>
+        )}
+        <Choices
+          label={t("analysis")}
+          value={mode}
+          onChange={setMode}
+          options={["quick", "deep", "explain"].map((value) => ({
+            value,
+            label: t(value),
+          }))}
+        />
+        <Button
+          title={t("analyze")}
+          disabled={busy || (!selected && !model.trim())}
+          onPress={submit}
+        />
+        {!!agents.error && <Notice error>{agents.error}</Notice>}
+      </Card>
+      <Loading loading={job.loading && !job.data} />
+      {!!job.error && <Notice error>{job.error}</Notice>}
+      {!!job.data && (
+        <Card>
+          <Heading>{t(job.data.status)}</Heading>
+          <Label muted>
+            {job.data.request_config?.symbol} ·{" "}
+            {job.data.request_config?.timeframe} ·{" "}
+            {new Date(job.data.created_at).toLocaleString(locale)}
+          </Label>
+          {job.data.error_code && (
+            <Notice error>
+              {errorText(t, new Error(job.data.error_code))}
+            </Notice>
+          )}
+          {result && (
+            <>
+              <Label>{result.summary_short}</Label>
+              <Label muted>{result.summary_detailed}</Label>
+              <Label>
+                {t("confidence")}: {number(locale, result.confidence, 0)} / 100
+              </Label>
+              <Notice>{t("confidenceHint")}</Notice>
+              {result.setups?.map((setup: any, i: number) => (
+                <Card key={i}>
+                  <Heading>{setup.direction}</Heading>
+                  <Label>{setup.reasoning}</Label>
+                  {setup.entry && (
+                    <>
+                      <Label>
+                        {t("entry")}: {number(locale, setup.entry.price, 6)}
+                      </Label>
+                      <Label>
+                        {t("stopLoss")}: {number(locale, setup.stop_loss, 6)}
+                      </Label>
+                      <Label>
+                        {t("targets")}:{" "}
+                        {setup.take_profits
+                          ?.map(
+                            (target: any) =>
+                              number(locale, target.price, 6) +
+                              " (" +
+                              target.size_pct +
+                              "%)",
+                          )
+                          .join(" · ")}
+                      </Label>
+                      <Label>
+                        {t("riskReward")}: {number(locale, setup.risk_reward)}
+                      </Label>
+                    </>
+                  )}
+                  <Label muted>
+                    {t("invalidation")}: {setup.invalidation}
+                  </Label>
+                  <Label muted>
+                    {t("timing")}: {setup.timing}
+                  </Label>
+                </Card>
+              ))}
+              <Label>
+                {t("risk")}: {t(result.risk?.level)} ·{" "}
+                {result.risk?.factors?.join(" · ")}
+              </Label>
+              <Label muted>{result.risk?.event_risk}</Label>
+            </>
+          )}
+        </Card>
+      )}
+      <Card>
+        <Heading>{t("analysis")}</Heading>
+        {history.data?.slice(0, 12).map((row) => (
+          <Button
+            key={row.id}
+            secondary
+            title={`${row.request_config?.symbol || ""} · ${t(row.status)} · ${new Date(row.created_at).toLocaleDateString(locale)}`}
+            onPress={() => setJob(row.id)}
+          />
+        ))}
+        {!history.data?.length && <Label muted>{t("empty")}</Label>}
+        {!!history.error && <Notice error>{history.error}</Notice>}
+      </Card>
+    </>
+  );
+}
+function RiskCalculator() {
+  const { t, locale } = useMobile();
+  const [form, setForm] = useState({
+      account: "10000",
+      riskPct: "1",
+      entry: "",
+      stop: "",
+      target: "",
+      leverage: "1",
+      feeBps: "10",
+      slippageBps: "5",
+    }),
+    [direction, setDirection] = useState("LONG");
+  let result: any = null;
+  try {
+    result = positionSize({
+      ...Object.fromEntries(
+        Object.entries(form).map(([key, value]) => [key, Number(value)]),
+      ),
+      direction,
+      ...(form.target
+        ? { target: Number(form.target) }
+        : { target: undefined }),
+    } as any);
+  } catch {}
+  return (
+    <Card>
+      <Heading>{t("calculator")}</Heading>
+      <Choices
+        label={t("direction")}
+        value={direction}
+        onChange={setDirection}
+        options={["LONG", "SHORT"].map((value) => ({ value, label: value }))}
+      />
+      {Object.entries(form).map(([key, value]) => (
+        <Field
+          key={key}
+          label={t(key === "target" ? "targetPrice" : key)}
+          value={value}
+          keyboardType="decimal-pad"
+          onChangeText={(text) =>
+            setForm({ ...form, [key]: text.replace(",", ".") })
+          }
+        />
+      ))}
+      {result ? (
+        <>
+          <Metrics
+            values={[
+              "quantity",
+              "notional",
+              "margin",
+              "maxLoss",
+              "breakEvenPrice",
+              "targetCosts",
+              "netProfit",
+              "rewardRisk",
+            ].map((key) => ({
+              label: t(
+                key === "netProfit"
+                  ? "netTargetProfit"
+                  : key === "rewardRisk"
+                    ? "netRewardRisk"
+                    : key,
+              ),
+              value: number(locale, result[key], key === "quantity" ? 6 : 2),
+            }))}
+          />
+          {result.warnings.map((warning: string) => (
+            <Notice key={warning}>{t("riskWarning_" + warning)}</Notice>
+          ))}
+        </>
+      ) : (
+        <Label muted>{t("mobileRequired")}</Label>
+      )}
+      <Notice>{t("riskCostHint")}</Notice>
+    </Card>
+  );
+}
+export function AnalysisScreen() {
+  const { t } = useMobile();
+  return (
+    <>
+      <AuthGate>
+        <Research />
+      </AuthGate>
+      <RiskCalculator />
+      <Notice>{t("disclaimer")}</Notice>
+    </>
+  );
+}

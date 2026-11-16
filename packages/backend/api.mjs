@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { mobileStart, mobileRequest, mobileAuthorize, mobileExchange } from "./mobile-auth.mjs";
 import { adminHandle } from "./admin.mjs";
 import {
   platformSettings,
@@ -14,6 +15,8 @@ import { randomBytes, randomUUID, createHmac } from "node:crypto";
 import { query, transaction, audit } from "./store.mjs";
 import {
   session,
+  sessionToken,
+  mobileToken,
   createSession,
   clearSession,
   cookieName,
@@ -99,6 +102,7 @@ const csrf = (req) =>
     .update(cookies(req)[cookieName] || "anonymous")
     .digest("hex");
 const verifyCsrf = (req) => {
+  if (mobileToken(req)) return;
   if (req.headers.get("x-csrf-token") !== csrf(req))
     throw new Error("csrf_failed");
 };
@@ -158,6 +162,9 @@ export async function handle(req) {
         database: (await query("SELECT 1")).rows.length === 1,
         liveData: "provider-dependent",
       });
+    if (path === "auth/mobile/start" && method === "POST") return json(await mobileStart(req, body), 201);
+    if (path.startsWith("auth/mobile/request/") && method === "GET") return json(await mobileRequest(req, parts[3]));
+    if (path === "auth/mobile/exchange" && method === "POST") return json(await mobileExchange(req, body));
     if (path === "auth/oauth/start" && method === "GET") return oauthStart(url);
     if (path === "auth/oauth/callback" && method === "GET")
       return oauthCallback(req);
@@ -511,7 +518,7 @@ export async function handle(req) {
     if (path === "auth/me")
       return json({
         user,
-        csrfToken: user ? csrf(req) : null,
+        csrfToken: user && !mobileToken(req) ? csrf(req) : null,
         consentAccepted: user
           ? (await take("SELECT 1 FROM consents WHERE user_id=$1", [user.id]))
               .length > 0
@@ -534,6 +541,7 @@ export async function handle(req) {
     const uid = user.id;
     if (parts[0] === "admin")
       return json(await adminHandle(user, path, method, body, params));
+    if (path === "auth/mobile/authorize" && method === "POST") return json(await mobileAuthorize(user, body));
     if (path === "agents") return json(await availableAgents(user));
     if (mutation)
       await audit(uid, "attempt." + method.toLowerCase() + "." + parts[0]);
@@ -555,9 +563,9 @@ export async function handle(req) {
     }
     if (path === "auth/logout" && method === "POST") {
       await query("DELETE FROM sessions WHERE token_hash=$1", [
-        hash(cookies(req)[cookieName]),
+        hash(sessionToken(req)),
       ]);
-      return json({ logged_out: true }, 200, { "set-cookie": clearSession() });
+      return json({ logged_out: true }, 200, mobileToken(req) ? {} : { "set-cookie": clearSession() });
     }
     if (path === "settings") {
       if (method === "GET")
@@ -1595,6 +1603,7 @@ export async function handle(req) {
       "wallet_last_login_method",
       "wallet_totp_required",
       "invalid_totp",
+      "mobile_request_expired",
       "invalid_token",
       "invalid_alert",
       "invalid_content_type",
@@ -1607,7 +1616,7 @@ export async function handle(req) {
       "invalid_image",
     ];
     const status =
-      code === "authentication_required" || code === "wallet_challenge_invalid"
+      code === "authentication_required" || code === "wallet_challenge_invalid" || code === "mobile_login_failed"
         ? 401
         : [
               "csrf_failed",
@@ -1623,6 +1632,7 @@ export async function handle(req) {
                   "admin_last_admin",
                   "job_not_queued",
                   "agent_changed",
+                  "mobile_request_used",
                 ].includes(code) ||
                 code === "wallet_already_linked" ||
                 code === "version_conflict" ||

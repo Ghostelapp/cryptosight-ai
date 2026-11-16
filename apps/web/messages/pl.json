@@ -464,5 +464,12 @@
   "riskWarning_high_leverage": "Wysoka dźwignia zwiększa wrażliwość na zmiany ceny.",
   "riskWarning_high_account_risk": "Ta transakcja naraża co najmniej 2% kapitału konta.",
   "riskWarning_collateral_capped": "Wielkość pozycji ograniczono do dostępnego zabezpieczenia.",
-  "riskWarning_target_below_costs": "Cel nie pokrywa szacowanych kosztów transakcji."
+  "riskWarning_target_below_costs": "Cel nie pokrywa szacowanych kosztów transakcji.",
+  "mobileConnectTitle": "Połącz aplikację mobilną",
+  "mobileConnectHint": "Zatwierdź tylko, jeśli przed chwilą rozpoczęto logowanie w aplikacji CryptoSight AI na Twoim telefonie. Hasło i klucze dostawców pozostają na serwerze.",
+  "mobileConnectExpiry": "Żądanie wygasa o",
+  "mobileConnectAction": "Połącz to konto",
+  "mobileConnectExpired": "Żądanie logowania jest nieprawidłowe lub wygasło. Rozpocznij ponownie w aplikacji mobilnej.",
+  "mobileConnectSuccess": "Konto połączone. Wróć do aplikacji mobilnej.",
+  "mobileConnectOpen": "Otwórz CryptoSight AI"
 }

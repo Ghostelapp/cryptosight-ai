@@ -23,12 +23,12 @@ def fix(x):
 fix(schemas['Analysis'])
 paths={}
 def route(path,method,body=None,response=None,public=False,status=200,query=None,binary=None,idempotent=False):
- op={'operationId':method+'_'+path.strip('/').replace('/','_').replace('{','').replace('}','').replace('-','_'),'security':[] if public else [{'session':[]}],'responses':{str(status):{'description':'Success','content':{binary or 'application/json':{'schema':response or R('Acknowledgement')}}}}}
+ op={'operationId':method+'_'+path.strip('/').replace('/','_').replace('{','').replace('}','').replace('-','_'),'security':[] if public else [{'session':[]},{'mobileBearer':[]}],'responses':{str(status):{'description':'Success','content':{binary or 'application/json':{'schema':response or R('Acknowledgement')}}}}}
  for code in [400,401,403,404,409,429,503]:op['responses'][str(code)]={'description':{400:'Invalid input',401:'Session required',403:'CSRF/origin or consent rejected',404:'Missing tenant-owned resource',409:'Version or idempotency conflict',429:'Quota or risk limit',503:'Integration unavailable'}[code],'content':{'application/json':{'schema':R('Error')}}}
  parameters=[]
  if '{id}' in path:parameters.append({'name':'id','in':'path','required':True,'schema':uuid})
  for name,schema in (query or {}).items():parameters.append({'name':name,'in':'query','schema':schema})
- if method!='get' and not public:parameters.append({'name':'x-csrf-token','in':'header','required':True,'schema':S(),'description':'Fetch from auth/me; also send exact APP_ORIGIN Origin header.'})
+ if method!='get' and not public:parameters.append({'name':'x-csrf-token','in':'header','required':False,'schema':S(),'description':'Required for cookie sessions: fetch from auth/me. Native bearer sessions omit CSRF. Both transports send the exact APP_ORIGIN Origin header.'})
  if idempotent:parameters.append({'name':'idempotency-key','in':'header','required':True,'schema':S(minLength=8,maxLength=150)})
  if parameters:op['parameters']=parameters
  if body is not None:op['requestBody']={'required':True,'content':{'application/json':{'schema':body}}}
@@ -46,6 +46,10 @@ route('/auth/resend-verification','post',O({'email':S(format='email')},['email']
 route('/auth/register','post',O({'email':S(format='email'),'password':S(minLength=12,maxLength=128),'locale':locale,'consent':{'const':True}},['email','password','consent']),public=True,status=201)
 route('/auth/login','post',O({'email':S(format='email'),'password':S(maxLength=128),'totp':S(maxLength=10)},['email','password']),public=True)
 for p,b in [('verify',O({'token':S(minLength=64,maxLength=64)},['token'])),('reset-request',O({'email':S(format='email')},['email'])),('reset',O({'token':S(minLength=64,maxLength=64),'password':S(minLength=12,maxLength=128)},['token','password']))]:route('/auth/'+p,'post',b,public=True)
+route('/auth/mobile/start','post',O({'codeChallenge':S(pattern='^[A-Za-z0-9_-]{43}$'),'state':S(pattern='^[a-f0-9]{64}$')},['codeChallenge','state']),R('JsonRecord'),public=True,status=201)
+route('/auth/mobile/request/{id}','get',response=R('JsonRecord'),public=True)
+route('/auth/mobile/authorize','post',O({'requestId':uuid,'totp':S(maxLength=10)},['requestId']),R('JsonRecord'))
+route('/auth/mobile/exchange','post',O({'requestId':uuid,'code':S(pattern='^[a-f0-9]{64}$'),'codeVerifier':S(pattern='^[A-Za-z0-9_-]{43}$')},['requestId','code','codeVerifier']),R('JsonRecord'),public=True)
 route('/auth/me','get',public=True,response=R('JsonRecord'));route('/auth/logout','post',O({}));route('/auth/oauth/start','get',public=True,status=302);route('/auth/oauth/callback','get',public=True,status=302)
 route('/ws-ticket','post',O({}),R('JsonRecord'));route('/consents','post',O({}))
 route('/settings','get',response=R('JsonRecord'));route('/settings','patch',O({'locale':locale,'timezone':S(maxLength=80),'settings':O({'theme':S(enum=['dark','light']),'telegramChatId':S(),'dailyLossLimit':positive,'maxDrawdownPct':N(exclusiveMinimum=0,maximum=100)})},['locale','timezone']))
@@ -90,7 +94,7 @@ route('/admin/job-cancellations','post',O({'id':uuid,'totp':S(maxLength=6)},['id
 for p,ops in paths.items():
  if p.startswith('/admin/'):
   for op in ops.values():op['description']='Administrator role required. Mutations require current TOTP when the administrator has 2FA enabled. Secrets are write-only; reads expose configuration metadata only.'
-api={'openapi':'3.1.0','info':{'title':'CryptoSight AI API','version':'1.0.0','description':'Implemented routes. Shared JSON database-row responses allow documented SQL fields; analysis and mutation inputs have strict schemas. Authentication uses opaque HTTP-only sessions. CSRF token and exact Origin required for private writes. No real trading endpoints.'},'servers':[{'url':'/api/v1'}],'paths':paths,'components':{'securitySchemes':{'session':{'type':'apiKey','in':'cookie','name':'__Host-cryptosight','description':'cryptosight in development; __Host-cryptosight Secure cookie in production.'}},'schemas':schemas}}
+api={'openapi':'3.1.0','info':{'title':'CryptoSight AI API','version':'1.0.0','description':'Implemented routes. Shared JSON database-row responses allow documented SQL fields; analysis and mutation inputs have strict schemas. Authentication uses opaque cookie or native bearer sessions. Cookie writes require CSRF; all private writes require exact Origin. No real trading endpoints.'},'servers':[{'url':'/api/v1'}],'paths':paths,'components':{'securitySchemes':{'mobileBearer':{'type':'http','scheme':'bearer','bearerFormat':'Opaque mobile session'},'session':{'type':'apiKey','in':'cookie','name':'__Host-cryptosight','description':'cryptosight in development; __Host-cryptosight Secure cookie in production.'}},'schemas':schemas}}
 (root/'packages/contracts/openapi.json').write_text(json.dumps(api,indent=2)+'\n')
 print(len(paths),'paths',sum(map(len,paths.values())),'operations')
 

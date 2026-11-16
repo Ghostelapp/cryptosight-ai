@@ -464,5 +464,12 @@
   "riskWarning_high_leverage": "High leverage increases sensitivity to price movements.",
   "riskWarning_high_account_risk": "This trade risks at least 2% of the account.",
   "riskWarning_collateral_capped": "Position size was capped by the available collateral.",
-  "riskWarning_target_below_costs": "The target does not cover the estimated trading costs."
+  "riskWarning_target_below_costs": "The target does not cover the estimated trading costs.",
+  "mobileConnectTitle": "Connect your mobile app",
+  "mobileConnectHint": "Approve only if you just started signing in from the CryptoSight AI app on your phone. Your password and provider keys stay on the server.",
+  "mobileConnectExpiry": "Request expires at",
+  "mobileConnectAction": "Connect this account",
+  "mobileConnectExpired": "This sign-in request is invalid or expired. Start again from the mobile app.",
+  "mobileConnectSuccess": "Account connected. Return to the mobile app.",
+  "mobileConnectOpen": "Open CryptoSight AI"
 }

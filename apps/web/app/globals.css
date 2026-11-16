@@ -1923,6 +1923,29 @@ tr:last-child td {
     flex-wrap: wrap;
   }
 }
+.mobile-connect-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.mobile-connect-card {
+  width: min(100%, 480px);
+  padding: 28px;
+  display: grid;
+  gap: 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.mobile-connect-card h1 {
+  font-size: 25px;
+  line-height: 1.25;
+}
+.mobile-connect-card input {
+  width: 100%;
+  min-height: 48px;
+}
 
 .admin-tabs {
   display: flex;

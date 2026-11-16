@@ -2,7 +2,8 @@
   "name": "cryptosight-ai",
   "private": true,
   "workspaces": [
-    "apps/web"
+    "apps/web",
+    "apps/mobile"
   ],
   "scripts": {
     "dev": "node scripts/dev.mjs",
@@ -16,11 +17,21 @@
     "secrets:generate": "node scripts/secrets.mjs",
     "test:e2e": "playwright test",
     "check": "npm test && npm run build",
-    "admin:bootstrap": "node scripts/admin-bootstrap.mjs"
+    "admin:bootstrap": "node scripts/admin-bootstrap.mjs",
+    "mobile:start": "npm run start -w apps/mobile",
+    "mobile:android": "npm run android -w apps/mobile",
+    "mobile:apk": "node scripts/mobile-apk.mjs",
+    "mobile:ios": "npm run ios -w apps/mobile",
+    "mobile:check": "npm run typecheck -w apps/mobile",
+    "mobile:export": "npm run export -w apps/mobile",
+    "mobile:lint": "npm run lint -w apps/mobile"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "prettier": "^3.9.9"
+  },
+  "overrides": {
+    "minimatch@>=7.0.0 <11.0.1": "^11.0.8"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

@@ -9,3 +9,10 @@ coverage/
 *.tsbuildinfo
 playwright-report/
 test-results/
+.expo/
+apps/mobile/dist/
+apps/mobile/android/
+apps/mobile/ios/
+*.apk
+*.aab
+*.ipa

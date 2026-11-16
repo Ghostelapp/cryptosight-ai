@@ -12,6 +12,10 @@ import {
   workspaceKey,
 } from "../lib/workspace.mjs";
 import { tradePnl } from "../../../packages/quant/journal.mjs";
+import {
+  rememberMobileRequest,
+  consumeMobileRequest,
+} from "../lib/mobile-intent.mjs";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   Activity,
@@ -402,6 +406,13 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
         setLossLimit(r.user.settings.dailyLossLimit || 500);
         setMaxDrawdown(r.user.settings.maxDrawdownPct || 10);
         if (r.user.settings.theme) setTheme(r.user.settings.theme);
+        if (r.consentAccepted) {
+          try {
+            const requestId = consumeMobileRequest(sessionStorage);
+            if (requestId)
+              location.replace("/mobile/connect?request=" + requestId);
+          } catch {}
+        }
       }
     } catch (e: any) {
       error(e.message);
@@ -438,6 +449,12 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
       setConsentOpen(true);
     }
     const sp = new URLSearchParams(location.search);
+    if (sp.get("mobileRequest")) {
+      try {
+        if (rememberMobileRequest(sessionStorage, sp.get("mobileRequest")))
+          setAuthOpen(true);
+      } catch {}
+    }
     if (sp.get("verify"))
       perform("verify", async () => {
         await api("auth/verify", {
@@ -3080,6 +3097,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                 localStorage.setItem("risk-consent", "2026-10-v1");
               } catch {}
               setConsentOpen(false);
+              if (user) await loadMe();
             })
           }
         >

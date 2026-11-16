@@ -1,0 +1,23 @@
+{
+  "cli": { "version": ">= 18.0.0", "appVersionSource": "remote" },
+  "build": {
+    "development": { "developmentClient": true, "distribution": "internal" },
+    "preview": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "ios": { "simulator": true }
+    },
+    "preview-local": {
+      "extends": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:3000",
+        "EXPO_PUBLIC_ALLOW_LOCAL_HTTP": "true"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": { "EXPO_PUBLIC_ALLOW_LOCAL_HTTP": "false" }
+    }
+  },
+  "submit": { "production": {} }
+}
