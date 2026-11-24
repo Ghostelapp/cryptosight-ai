@@ -84,3 +84,5 @@ The admin panel manages encrypted shared AI-agent keys/models, agent access, use
 ## Advanced paper trading
 
 Market/limit orders, reserved funds, editable SL/TP, partial exits, risk sizing and execution history are supported. **Apply migration 006 and run the persistent worker** for automatic limit fills and protective exits, including when the browser is closed. See [docs/PAPER-TRADING.md](docs/PAPER-TRADING.md) for the execution model, Railway configuration and verification limits.
+
+The web Screener now includes market-wide potential setups, separate from paid watchlist AI scans. See [CANDIDATE-SCANNER.md](docs/CANDIDATE-SCANNER.md) for entry conditions, limits and scoring.

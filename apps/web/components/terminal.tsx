@@ -1,6 +1,7 @@
 "use client";
 import { ModelPicker } from "./model-picker";
 import { ResearchEvidence } from "./research-evidence";
+import { CandidateScanner } from "./candidate-scanner";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { PaperPanel } from "./paper-panel";
@@ -1999,6 +2000,12 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               )}
               {tab === "screener" && (
                 <>
+                  <CandidateScanner instrument={instrument} locale={locale} protect={protect} onSelect={(row)=>{
+                    updateInstrument({venue:row.venue,market:row.market,symbol:row.symbol,timeframe:row.timeframe});
+                    setTab("terminal");
+                  }} />
+                  <h2>{t("watchlistScans")}</h2>
+                  <p className="muted">{t("watchlistScansHint")}</p>
                   <div className="form-row">
                     <Button
                       onClick={() => {

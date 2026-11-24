@@ -2204,3 +2204,8 @@ kbd {
 .evidence-block dl { display: grid; grid-template-columns: 1fr auto; gap: 5px 8px; font-size: 12px; }
 .evidence-block dd { margin: 0; font-variant-numeric: tabular-nums; }
 .evidence-block p, .research-evidence > p { font-size: 12px; overflow-wrap: anywhere; }
+.candidate-scanner .evidence-grid { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
+.candidate-scanner .evidence-block dl { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.candidate-scanner .evidence-block dd { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+.candidate-scanner .evidence-block > button { display: block; margin-top: 10px; }
+.candidate-scanner .evidence-block > small { display: block; margin-top: 6px; }

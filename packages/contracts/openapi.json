@@ -9413,6 +9413,184 @@
         }
       }
     },
+    "/scanner/candidates": {
+      "get": {
+        "operationId": "get_scanner_candidates",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "mobileBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF/origin or consent rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing tenant-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Quota or risk limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "venue",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "binance",
+                "bybit",
+                "okx"
+              ],
+              "default": "binance"
+            }
+          },
+          {
+            "name": "market",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "spot",
+                "perpetual"
+              ],
+              "default": "spot"
+            }
+          },
+          {
+            "name": "timeframe",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1m",
+                "3m",
+                "5m",
+                "15m",
+                "30m",
+                "1h",
+                "2h",
+                "4h",
+                "6h",
+                "12h",
+                "1d",
+                "1w",
+                "1M"
+              ],
+              "default": "1h"
+            }
+          },
+          {
+            "name": "minVolume",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "minimum": 1000000,
+              "maximum": 1000000000000,
+              "default": 10000000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 5,
+              "maximum": 30,
+              "default": 24
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "LONG",
+                "SHORT"
+              ],
+              "default": "all"
+            }
+          }
+        ]
+      }
+    },
     "/signals": {
       "get": {
         "operationId": "get_signals",

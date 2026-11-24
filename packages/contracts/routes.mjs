@@ -196,6 +196,9 @@ export const routes = {
     "get",
     "post"
   ],
+  "/scanner/candidates": [
+    "get"
+  ],
   "/signals": [
     "get"
   ],

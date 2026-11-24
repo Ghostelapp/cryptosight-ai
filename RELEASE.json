@@ -1,8 +1,8 @@
 {
   "name": "CryptoSight AI",
-  "version": "1.6.0-rc.1",
+  "version": "1.6.1-rc.1",
   "validation": {
-    "unit_integration_passed": 104,
+    "unit_integration_passed": 112,
     "live_tests_skipped": 3,
     "strict_typescript": "passed",
     "production_build": "passed",
@@ -12,7 +12,7 @@
     "synthetic_gateway_symbols": 51,
     "synthetic_transport_p95_ms": 1,
     "production_wallet_http_flow": "passed",
-    "browser_scenarios_discovered": 22,
+    "browser_scenarios_discovered": 23,
     "mobile_browser_execution": "22 Chromium scenarios verified across runs; two resource-contention failures passed in four-scenario rerun",
     "production_admin_http_flow": "passed",
     "workflow_static_validation": "passed: actionlint 1.7.12",
@@ -28,7 +28,8 @@
     "android_native_ui": "passed: welcome screen and sample-market candlestick/EMA chart visually inspected; device browser pairing not exercised",
     "vps_compose_and_restore": "passed: initial deployment, seven migrations, isolated restore, runtime DB/Redis/worker/WSS",
     "analysis_engine": "passed: closed-bar evidence, adaptive frames, optional feeds, costs, tenant projection",
-    "android_https_preview": "passed: arm64-v8a/x86_64 build, signature and embedded HTTPS backend/research/model-picker content verified"
+    "android_https_preview": "passed: arm64-v8a/x86_64 build, signature and embedded HTTPS backend/research/model-picker content verified",
+    "candidate_scanner": "passed: seven strategy/orchestration tests, authentication/input bounds, candidate/watch/empty/chart UI and real VPS read-only scan"
   },
   "unverified": [
     "live exchange access and end-to-end latency",
@@ -128,5 +129,16 @@
     "max_generation_attempts": 2,
     "accuracy_backtested": false,
     "news_source": "public CoinDesk RSS configured and verified on VPS"
+  },
+  "candidate_scanner": {
+    "scope": "highest-turnover USDT market pairs",
+    "default_universe": 24,
+    "max_universe": 30,
+    "max_parallel_pairs": 4,
+    "confirmation_timeframe": true,
+    "paid_ai_calls": 0,
+    "automatic_orders": false,
+    "score": "rule confluence, not profit probability",
+    "backtested": false
   }
 }

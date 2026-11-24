@@ -47,6 +47,7 @@ import { positionSize, correlation } from "../quant/research.mjs";
 import { snapshot, llm, providers } from "../ai/agent.mjs";
 import { listModels } from "../ai/models.mjs";
 import { setupMetrics } from "../quant/evidence.mjs";
+import { candidateScan } from "./candidate-scanner.mjs";
 import { queueAnalysis, credential, estimate, withAIBudget } from "./jobs.mjs";
 import { cached, redisClient } from "./cache.mjs";
 import { email, news } from "./notifications.mjs";
@@ -1391,6 +1392,15 @@ export async function handle(req) {
           );
       });
       return json(job, 202);
+    }
+    if (path === "scanner/candidates") {
+      const config = instrument.pick({venue:true,market:true,timeframe:true}).extend({
+        minVolume:z.coerce.number().finite().min(1000000).max(1e12).default(10000000),
+        limit:z.coerce.number().int().min(5).max(30).default(24),
+        direction:z.enum(["all","LONG","SHORT"]).default("all"),
+      }).parse(params);
+      await rateLimit(`candidate-scan:${uid}`,3,60);
+      return json(await candidateScan(config));
     }
     if (path === "scanner" && method === "POST") {
       const b = z

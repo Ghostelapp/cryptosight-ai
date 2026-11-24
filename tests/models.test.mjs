@@ -292,7 +292,7 @@ test("analysis evidence projection remains tenant scoped and excludes the raw sn
   };
   await query(
     "INSERT INTO analyses(id,user_id,locale,provider,model,prompt_version,schema_version,status,result,snapshot_id,idempotency_key,mode,request_config,reservation_usd) VALUES($1,$2,'en','openai','fixture','fixture',1,'completed',$3,$4,$5,'deep','{}',0)",
-    [id, ownerId, JSON.stringify(result), snapshotId, "research-"+id],
+    [id, ownerId, JSON.stringify(result), snapshotId, "research-" + id],
   );
   const response = await request("analyses/" + id, { user: owner });
   assert.equal(response.status, 200);
@@ -300,4 +300,21 @@ test("analysis evidence projection remains tenant scoped and excludes the raw sn
   assert.equal(response.data.trade_metrics[0].grossRR, 2);
   assert.ok(!JSON.stringify(response.data).includes("privateRaw"));
   assert.equal((await request("analyses/" + id, { user: other })).status, 404);
+});
+
+test("candidate scanner requires authentication and rejects excessive or malformed scan parameters", async () => {
+  assert.equal((await request("scanner/candidates")).status, 401);
+  for (const queryString of [
+    "limit=500",
+    "limit=1",
+    "venue=internal",
+    "direction=BUY_NOW",
+    "minVolume=0",
+    "timeframe=invalid",
+  ]) {
+    const response = await request("scanner/candidates?" + queryString, {
+      user: owner,
+    });
+    assert.equal(response.status, 400);
+  }
 });
