@@ -12,12 +12,13 @@ if (System.getProperty("os.name").toLowerCase().contains("windows")) {
                 nativeProject.extensions.getByName("androidComponents").finalizeDsl { androidDsl ->
                     if (nativeProject.path == ":app") {
                         def stagingKey = Integer.toHexString(rootProject.projectDir.absolutePath.hashCode())
-                        androidDsl.externalNativeBuild.cmake.buildStagingDirectory = new File(System.getProperty("java.io.tmpdir"), "cs/" + stagingKey)
+                        def stagingBase = System.getProperty("jdk.net.unixdomain.tmpdir", System.getProperty("java.io.tmpdir"))
+                        androidDsl.externalNativeBuild.cmake.buildStagingDirectory = new File(stagingBase, "cs/" + stagingKey)
                     }
                     def cmake = androidDsl.defaultConfig.externalNativeBuild.cmake
                     def args = cmake.arguments
                     args.removeAll { it.startsWith("-DCMAKE_OBJECT_PATH_MAX=") || it.startsWith("-DCMAKE_CXX_COMPILER_ARG1=") }
-                    args.add("-DCMAKE_OBJECT_PATH_MAX=240")
+                    args.add("-DCMAKE_OBJECT_PATH_MAX=" + (nativeProject.path == ":app" ? "250" : "240"))
                     cmake.cppFlags.removeAll { it == "--driver-mode=g++" }
                     cmake.cppFlags.add("--driver-mode=g++")
                 }

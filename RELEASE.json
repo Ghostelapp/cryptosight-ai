@@ -18,20 +18,22 @@
     "workflow_static_validation": "passed: actionlint 1.7.12",
     "gateway_handshake_limits": "passed",
     "repeated_paper_migration": "passed",
-    "remote_ci": "blocked: GitHub account locked due to billing; jobs did not start",
+    "remote_ci": "native branch not verified: GitHub API TLS handshake timeout; earlier main runs blocked by account billing",
     "native_typescript": "passed",
     "native_lint": "passed",
     "native_hermes_export": "passed: Android and iOS",
     "native_react_isolation": "Hermes contains React 19.3.0; React 19.3.1 and backend source absent",
     "expo_doctor": "19/20: intentional isolated web/native React versions",
-    "android_native_build": "pending local toolchain verification"
+    "android_native_build": "passed: arm64-v8a/x86_64 APK, development signature verified, installed and launched on Android emulator",
+    "android_native_ui": "passed: welcome screen and sample-market candlestick/EMA chart visually inspected; device browser pairing not exercised"
   },
   "unverified": [
     "live exchange access and end-to-end latency",
     "Docker/PostgreSQL/Redis deployment and restore",
     "credential-dependent external integrations",
-    "GitHub-hosted CI execution: account billing lock",
-    "iOS native compilation, signing and real-device biometrics"
+    "GitHub-hosted native branch CI execution: API TLS timeout; earlier main blocked by account billing",
+    "iOS native compilation, signing and real-device biometrics",
+    "on-device browser pairing and private native screens"
   ],
   "automatic_exchange_execution": false,
   "wallet_auth": {
@@ -95,6 +97,12 @@
     "authentication": "one-use PKCE browser pairing; seven-day SecureStore bearer session",
     "required_migration": "007_mobile_login.sql",
     "native_push": false,
-    "ios_signed_build": "requires macOS/EAS and owner signing credentials"
+    "ios_signed_build": "requires macOS/EAS and owner signing credentials",
+    "android_local_apk": {
+      "path": ".runtime/mobile-builds/CryptoSight-AI-local.apk",
+      "bytes": 56131479,
+      "sha256": "cecebc70b2be8f609f2a1e6a897603153504e78441315ed45fe0850ce1a19f10",
+      "signing": "generated development key; not a store release"
+    }
   }
 }

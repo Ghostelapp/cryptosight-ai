@@ -30,6 +30,7 @@ import {
   serverOrigin,
 } from "../../../packages/mobile/protocol.mjs";
 import { mobileClient, base64url } from "./api.mjs";
+import { clearJournalExport } from "./export-cache";
 import { translator, errorText } from "./i18n";
 import {
   Button,
@@ -103,6 +104,7 @@ function MobileProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setLocked(false);
     await SecureStore.deleteItemAsync(sessionKey);
+    await clearJournalExport();
   }, []);
   const api = useMemo(() => {
     const client = mobileClient(server || "https://localhost.invalid", {

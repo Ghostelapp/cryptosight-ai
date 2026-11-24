@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert } from "react-native";
-import { File, Paths } from "expo-file-system";
+import { journalExportFile } from "./export-cache";
 import * as Sharing from "expo-sharing";
 import {
   journalStats,
@@ -57,18 +57,16 @@ function Journal() {
     void run(async () => {
       if (!(await Sharing.isAvailableAsync()))
         throw new Error("service_unavailable");
-      const file = new File(Paths.cache, "CryptoSight-journal.csv");
+      const file = journalExportFile();
       file.create({ overwrite: true });
       await file.write(journalCsv(entries.data || []));
-      try {
-        await Sharing.shareAsync(file.uri, {
-          mimeType: "text/csv",
-          UTI: "public.comma-separated-values-text",
-          dialogTitle: t("exportCsv"),
-        });
-      } finally {
-        if (file.exists) file.delete();
-      }
+      // Android receivers may open the URI after the chooser returns. Keep the
+      // private cache file until logout/OS cleanup instead of deleting it early.
+      await Sharing.shareAsync(file.uri, {
+        mimeType: "text/csv",
+        UTI: "public.comma-separated-values-text",
+        dialogTitle: t("exportCsv"),
+      });
     });
   return (
     <>
