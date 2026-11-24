@@ -1,4 +1,5 @@
 "use client";
+import { ModelPicker } from "./model-picker";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { PaperPanel } from "./paper-panel";
@@ -209,6 +210,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     [templateName, setTemplateName] = useState("");
   const [provider, setProvider] = useState("openai"),
     [model, setModel] = useState(""),
+    [modelCatalogRevision, setModelCatalogRevision] = useState(0),
     [mode, setMode] = useState("quick"),
     [analysis, setAnalysis] = useState<any>(null),
     [analysisId, setAnalysisId] = useState(""),
@@ -903,14 +905,16 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
           ))}
         </select>
       </Field>
-      <Field label={t("model")}>
-        <input
+      <div className="field">
+        <span>{t("model")}</span>
+        <ModelPicker
+          provider={provider}
           value={model}
-          disabled={!!agentId}
-          onChange={(e) => setModel(e.target.value)}
-          autoComplete="off"
+          enabled={!!user && !agentId}
+          revision={JSON.stringify(keys) + modelCatalogRevision}
+          onChange={setModel}
         />
-      </Field>
+      </div>
     </>
   );
   const stat = (label: string, value: any, sub?: string) => (
@@ -2805,6 +2809,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                                 });
                                 setKeyValue("");
                                 setKeys(await api("credentials"));
+                                setModelCatalogRevision((revision) => revision + 1);
                                 setToast(t("saved"));
                               })
                             }
@@ -2825,6 +2830,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                                       body: {},
                                     });
                                     setKeys(await api("credentials"));
+                                    setModelCatalogRevision((revision) => revision + 1);
                                   })
                                 }
                               >

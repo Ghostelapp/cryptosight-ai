@@ -471,5 +471,13 @@
   "mobileConnectAction": "Connect this account",
   "mobileConnectExpired": "This sign-in request is invalid or expired. Start again from the mobile app.",
   "mobileConnectSuccess": "Account connected. Return to the mobile app.",
-  "mobileConnectOpen": "Open CryptoSight AI"
+  "mobileConnectOpen": "Open CryptoSight AI",
+  "availableModels": "Models available to this key",
+  "chooseModel": "Choose a model",
+  "loadingModels": "Loading models…",
+  "refreshModels": "Fetch models",
+  "searchModels": "Search models",
+  "modelsHint": "Save the provider key and fetch models. You can also enter a model ID manually.",
+  "err_provider_key_rejected": "The provider rejected this key or denied access to the model list.",
+  "err_model_catalog_unavailable": "Could not fetch models. Retry or enter a model ID manually."
 }

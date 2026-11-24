@@ -55,6 +55,8 @@ route('/ws-ticket','post',O({}),R('JsonRecord'));route('/consents','post',O({}))
 route('/settings','get',response=R('JsonRecord'));route('/settings','patch',O({'locale':locale,'timezone':S(maxLength=80),'settings':O({'theme':S(enum=['dark','light']),'telegramChatId':S(),'dailyLossLimit':positive,'maxDrawdownPct':N(exclusiveMinimum=0,maximum=100)})},['locale','timezone']))
 route('/totp','get',response=R('JsonRecord'));route('/totp','post',O({'secret':S(minLength=16,maxLength=100),'code':S(minLength=6,maxLength=6)},['secret','code']));route('/totp','delete',O({'password':S(),'code':S()},['code']))
 for p in ['credentials','templates','alerts','schedules','journal','backtests']:route('/'+p,'get',response=A(R('JsonRecord')));route('/'+p+'/{id}','delete') if p not in ['backtests'] else None
+route('/models','get',response=R('JsonRecord'),query={'provider':ai['provider'],'agentId':uuid})
+route('/models','post',O({'provider':ai['provider'],'key':S(minLength=8,maxLength=1000),'agentId':uuid},['provider']),R('JsonRecord'))
 route('/credentials','post',O({'provider':S(enum=['openai','gemini','anthropic','openrouter']),'key':S(minLength=8,maxLength=1000)},['provider','key']))
 route('/templates','post',O({'name':S(minLength=1,maxLength=100),'config':R('JsonRecord')},['name','config']),R('JsonRecord'))
 route('/analyses','get',response=A(R('AnalysisJob')));route('/analyses/{id}','get',response=R('AnalysisJob'));route('/analyses','post',R('AnalysisRequest'),R('AnalysisJob'),status=202,idempotent=True)

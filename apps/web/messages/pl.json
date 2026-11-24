@@ -471,5 +471,13 @@
   "mobileConnectAction": "Połącz to konto",
   "mobileConnectExpired": "Żądanie logowania jest nieprawidłowe lub wygasło. Rozpocznij ponownie w aplikacji mobilnej.",
   "mobileConnectSuccess": "Konto połączone. Wróć do aplikacji mobilnej.",
-  "mobileConnectOpen": "Otwórz CryptoSight AI"
+  "mobileConnectOpen": "Otwórz CryptoSight AI",
+  "availableModels": "Modele dostępne dla klucza",
+  "chooseModel": "Wybierz model",
+  "loadingModels": "Pobieranie modeli…",
+  "refreshModels": "Pobierz modele",
+  "searchModels": "Szukaj modelu",
+  "modelsHint": "Zapisz klucz dostawcy i pobierz modele. Możesz też wpisać identyfikator ręcznie.",
+  "err_provider_key_rejected": "Dostawca odrzucił klucz lub nie pozwala mu odczytać modeli.",
+  "err_model_catalog_unavailable": "Nie udało się pobrać modeli. Spróbuj ponownie lub wpisz identyfikator ręcznie."
 }

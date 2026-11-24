@@ -83,3 +83,7 @@ npm run test:e2e
 ```
 
 The web workspace uses React 19.3.1; Expo 58's renderer uses React 19.3.0. Metro explicitly resolves every native React import to the mobile workspace. Expo Doctor's duplicate-React check consequently reports the two intentional workspace versions; its other checks should pass. Removing that isolation or upgrading only native React can cause a renderer mismatch. The transitive minimatch override covers versions affected by GHSA-g3hv-75wg-m249, including fingerprinting and TypeScript lint tooling; it leaves legacy minimatch 3 consumers on their compatible API.
+
+## Provider model discovery
+
+Research fetches the selected provider's models using the account's saved key. Search narrows the displayed choices; the first 20 matches are shown. A sole returned model is selected automatically. With multiple models, the user chooses explicitly. Manual IDs remain supported when listing is unavailable. Gemini IDs are normalized to the generation API format. OpenRouter uses the user-filtered catalog; local compatible servers use the configured allowlisted `/models` endpoint. A catalog result is not a guarantee of balance, generation permissions or structured-output compatibility. Existing installed APKs need a new build to show the native picker; the web picker is deployed separately.

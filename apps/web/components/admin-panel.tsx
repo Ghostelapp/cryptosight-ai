@@ -1,4 +1,5 @@
 "use client";
+import { ModelPicker } from "./model-picker";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "./ui/button";
@@ -235,6 +236,7 @@ export function AdminPanel({ api, user, onChanged }: any) {
                     value={agent.provider}
                     onChange={(e) => {
                       change("provider", e.target.value);
+                      change("model", "");
                       setApiKey("");
                     }}
                   >
@@ -249,13 +251,17 @@ export function AdminPanel({ api, user, onChanged }: any) {
                     ))}
                   </select>
                 </Field>
-                <Field label={t("model")}>
-                  <input
+                <div className="field">
+                  <span>{t("model")}</span>
+                  <ModelPicker
+                    provider={agent.provider}
                     value={agent.model}
-                    onChange={(e) => change("model", e.target.value)}
-                    maxLength={100}
+                    onChange={(value) => change("model", value)}
+                    apiKey={apiKey}
+                    agentId={agent.has_key ? agent.id : undefined}
+                    automatic={false}
                   />
-                </Field>
+                </div>
                 <Field label={t("adminMinTier")}>
                   <select
                     value={agent.min_tier}

@@ -31,7 +31,7 @@ import {
   totpBegin,
   totpEnable,
 } from "./auth.mjs";
-import { encryptKey } from "../security/key-vault.mjs";
+import { encryptKey, decryptKey } from "../security/key-vault.mjs";
 import {
   history,
   historyWithFallback,
@@ -45,6 +45,7 @@ import { indicators } from "../quant/indicators.mjs";
 import { storeCandles } from "./market-storage.mjs";
 import { positionSize, correlation } from "../quant/research.mjs";
 import { snapshot, llm, providers } from "../ai/agent.mjs";
+import { listModels } from "../ai/models.mjs";
 import { queueAnalysis, credential, estimate, withAIBudget } from "./jobs.mjs";
 import { cached, redisClient } from "./cache.mjs";
 import { email, news } from "./notifications.mjs";
@@ -635,6 +636,35 @@ export async function handle(req) {
         [uid, user.locale],
       );
       return json({ accepted: true });
+    }
+    if (path === "models") {
+      const b = z.object({
+        provider: z.enum(providers),
+        key: z.string().trim().min(8).max(1000).optional(),
+        agentId: uuid.optional(),
+      }).parse(method === "GET"
+        ? { provider: params.provider, agentId: params.agentId }
+        : body);
+      await rateLimit(`model-catalog:${uid}`, 30, 60);
+      let key = b.key;
+      if (!key && b.agentId) {
+        if (user.role !== "admin") throw new Error("admin_required");
+        const agent = (await take(
+          "SELECT id,provider,key_envelope FROM platform_agents WHERE id=$1",
+          [b.agentId],
+        ))[0];
+        if (!agent || agent.provider !== b.provider)
+          throw new Error("not_found");
+        if (b.provider === "local")
+          key = process.env.LOCAL_LLM_KEY || "local";
+        else if (agent.key_envelope)
+          key = decryptKey(agent.key_envelope, rootKey(), {
+            userId: agent.id, provider: "platform:" + b.provider,
+          });
+        else throw new Error("credential_required");
+      }
+      key ||= await credential(uid, b.provider);
+      return json(await listModels(b.provider, key), 200, { "cache-control": "no-store" });
     }
     if (parts[0] === "credentials") {
       if (method === "GET")
@@ -1614,6 +1644,7 @@ export async function handle(req) {
       "invalid_push_endpoint",
       "invalid_webhook",
       "invalid_image",
+      "provider_key_rejected",
     ];
     const status =
       code === "authentication_required" || code === "wallet_challenge_invalid" || code === "mobile_login_failed"
@@ -1655,6 +1686,7 @@ export async function handle(req) {
           status === 503 &&
           ![
             "credential_required",
+            "model_catalog_unavailable",
             "ai_paused",
             "agent_unavailable",
             "email_not_configured",

@@ -29,6 +29,13 @@ function Research() {
     [mode, setMode] = useState("quick"),
     [jobId, setJob] = useState("");
   const job = useRemote<any>("analyses/" + jobId, !!jobId, 4000);
+  const catalog = useRemote<{
+    provider: string;
+    models: { id: string; name: string }[];
+  }>("models?provider=" + provider, !!user && !agentId);
+  const [modelSearch, setModelSearch] = useState("");
+  const models = catalog.data?.provider === provider ? catalog.data.models : [];
+  const resolvedModel = model || (models.length === 1 ? models[0].id : "");
   const intents = useRef(mutationIntents(Crypto.randomUUID));
   const selected = agents.data?.find((a) => a.id === agentId),
     result = job.data?.result;
@@ -39,7 +46,7 @@ function Research() {
         locale,
         mode,
         provider: selected?.provider || provider,
-        model: selected?.model || model.trim(),
+        model: selected?.model || resolvedModel.trim(),
         ...(selected ? { agentId: selected.id } : {}),
       };
       const response = await api.request("analyses", {
@@ -77,7 +84,11 @@ function Research() {
             <Choices
               label={t("provider")}
               value={provider}
-              onChange={setProvider}
+              onChange={(value) => {
+                setProvider(value);
+                setModel("");
+                setModelSearch("");
+              }}
               options={[
                 "openai",
                 "gemini",
@@ -86,9 +97,39 @@ function Research() {
                 "local",
               ].map((value) => ({ value, label: value }))}
             />
+            <Loading loading={catalog.loading} />
+            {!!models.length && (
+              <>
+                <Field
+                  label={t("searchModels")}
+                  value={modelSearch}
+                  onChangeText={setModelSearch}
+                  autoCapitalize="none"
+                />
+                <Choices
+                  label={t("availableModels")}
+                  value={resolvedModel}
+                  onChange={setModel}
+                  options={models
+                    .filter((m) =>
+                      (m.id + " " + m.name)
+                        .toLowerCase()
+                        .includes(modelSearch.toLowerCase()),
+                    )
+                    .slice(0, 20)
+                    .map((m) => ({ value: m.id, label: m.name }))}
+                />
+              </>
+            )}
+            <Button
+              title={t("refreshModels")}
+              disabled={catalog.loading}
+              onPress={() => void catalog.refetch()}
+            />
+            {!!catalog.error && <Notice error>{catalog.error}</Notice>}
             <Field
               label={t("model")}
-              value={model}
+              value={resolvedModel}
               onChangeText={setModel}
               placeholder={t("mobileModelHint")}
               autoCapitalize="none"
@@ -107,7 +148,7 @@ function Research() {
         />
         <Button
           title={t("analyze")}
-          disabled={busy || (!selected && !model.trim())}
+          disabled={busy || (!selected && !resolvedModel.trim())}
           onPress={submit}
         />
         {!!agents.error && <Notice error>{agents.error}</Notice>}

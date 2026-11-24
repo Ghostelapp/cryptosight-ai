@@ -131,6 +131,10 @@ export const routes = {
     "get",
     "post"
   ],
+  "/models": [
+    "get",
+    "post"
+  ],
   "/analyses": [
     "get",
     "post"

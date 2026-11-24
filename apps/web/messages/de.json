@@ -471,5 +471,13 @@
   "mobileConnectAction": "Dieses Konto verbinden",
   "mobileConnectExpired": "Diese Anmeldeanfrage ist ungültig oder abgelaufen. Starten Sie erneut in der mobilen App.",
   "mobileConnectSuccess": "Konto verbunden. Kehren Sie zur mobilen App zurück.",
-  "mobileConnectOpen": "CryptoSight AI öffnen"
+  "mobileConnectOpen": "CryptoSight AI öffnen",
+  "availableModels": "Für diesen Schlüssel verfügbare Modelle",
+  "chooseModel": "Modell auswählen",
+  "loadingModels": "Modelle werden geladen…",
+  "refreshModels": "Modelle abrufen",
+  "searchModels": "Modelle suchen",
+  "modelsHint": "Anbieterschlüssel speichern und Modelle abrufen. Die Modell-ID kann auch manuell eingegeben werden.",
+  "err_provider_key_rejected": "Der Anbieter hat den Schlüssel oder den Zugriff auf die Modellliste abgelehnt.",
+  "err_model_catalog_unavailable": "Modelle konnten nicht geladen werden. Erneut versuchen oder Modell-ID manuell eingeben."
 }

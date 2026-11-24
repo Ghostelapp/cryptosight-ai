@@ -58,3 +58,9 @@ The Windows Android release build subsequently passed for arm64-v8a and x86_64. 
 ## VPS deployment (2026-11-24)
 
 The first real Docker/PostgreSQL/Redis deployment passed production compilation/TypeScript, migrations 001–007, runtime database access, public HTTPS/API and WSS checks, a fresh persistent-worker heartbeat, and a dump/restore drill into an isolated disposable database. Binance, Bybit and OKX each returned 50 actual hourly candles with fallback disabled. Shell-script LF enforcement and Redis connection ordering fixed two deployment failures. This supersedes the earlier missing-Docker/restore limitation for this installation. SMTP/Resend, external backup delivery, paid AI calls and physical mobile pairing remain unverified. See [VPS-DEPLOYMENT.md](VPS-DEPLOYMENT.md) for operations and boundaries.
+
+## Provider model discovery (2026-11-24)
+
+The updated Node suite passed 92 tests, with three optional live-provider tests skipped (95 total). Seven new cases cover provider headers/catalog filtering, Gemini/Anthropic pagination, error redaction, local-host restrictions, tenant-bound credential access, POST CSRF and administrator-only access to agent credentials. Provider catalog responses are fixtures; no real provider key or paid generation was used. The two administrator Chromium scenarios and the new model-picker scenario passed. The latter saves a real encrypted fixture credential, uses intercepted catalog responses, selects a returned model and clears stale selection on provider change. The selected-model settings screenshot was visually inspected.
+
+Web production compilation/TypeScript, native TypeScript/lint, Android/iOS Hermes export and contract/catalog parity passed. OpenAPI now has 82 paths and 103 operations. A successful catalog response does not establish model billing balance or compatibility with every generation mode. The installed older Android APK must be rebuilt to include the new native controls.
