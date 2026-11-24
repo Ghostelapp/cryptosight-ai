@@ -1,5 +1,41 @@
 const valid = (value) =>
   typeof value === "number" && Number.isFinite(value) && value > 0;
+export function buildAIChartContext(
+  analysis,
+  reference,
+  levels = [],
+  limit = 1,
+) {
+  const context = [];
+  for (const kind of ["support", "resistance"]) {
+    const candidates = [...new Set(analysis?.key_levels?.[kind] || [])]
+      .filter(valid)
+      .sort((a, b) =>
+        valid(reference)
+          ? Math.abs(a - reference) - Math.abs(b - reference)
+          : 0,
+      );
+    for (const price of candidates) {
+      if (
+        [...levels, ...context].some(
+          (l) => Math.abs(l.price - price) < price * 1e-10,
+        )
+      )
+        continue;
+      const n = context.filter((l) => l.kind === kind).length + 1;
+      context.push({
+        id: kind + n,
+        kind,
+        price,
+        color: kind === "support" ? "#38c49a" : "#ed7684",
+        priority: 20 + n,
+        number: n,
+      });
+      if (n >= limit) break;
+    }
+  }
+  return context;
+}
 export function buildAIChartPlan(
   analysis,
   instrument,

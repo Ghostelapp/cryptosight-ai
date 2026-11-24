@@ -8,6 +8,8 @@ Below the chart, “Chart plan — AI explanation” includes the selected scena
 
 The native app continues to display the existing analysis results; this drawing update is in the web chart, including mobile browsers.
 
+For NO_TRADE, support/resistance context is shown automatically: up to two distinct levels of each type nearest the latest chart price, using only levels supplied by that analysis. The canvas explicitly labels the result as an AI observation. Scale fitting includes these context levels. If none were supplied, the status remains visible and the guide explains that no levels were provided. This observation does not introduce an entry, stop or target. LONG/SHORT retain optional context levels. Browser regression checks verify the actual canvas text, including the empty-level case, rather than only the explanation panel.
+
 The default web and native research mode is now **deep**. Quick and explain remain available. Deep research collects the selected timeframe and two context frames appropriate to its horizon: for example 1m/15m/1h, 1h/4h/1d, or 1d/1w/1M. Weekly/monthly research also includes a shorter context frame. It does not silently substitute another venue.
 
 ## Evidence before generation

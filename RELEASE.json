@@ -1,8 +1,8 @@
 {
   "name": "CryptoSight AI",
-  "version": "1.6.2-rc.1",
+  "version": "1.6.2-rc.2",
   "validation": {
-    "unit_integration_passed": 117,
+    "unit_integration_passed": 118,
     "live_tests_skipped": 3,
     "strict_typescript": "passed",
     "production_build": "passed",
@@ -12,7 +12,7 @@
     "synthetic_gateway_symbols": 51,
     "synthetic_transport_p95_ms": 1,
     "production_wallet_http_flow": "passed",
-    "browser_scenarios_discovered": 23,
+    "browser_scenarios_discovered": 25,
     "mobile_browser_execution": "22 Chromium scenarios verified across runs; two resource-contention failures passed in four-scenario rerun",
     "production_admin_http_flow": "passed",
     "workflow_static_validation": "passed: actionlint 1.7.12",
@@ -30,7 +30,7 @@
     "analysis_engine": "passed: closed-bar evidence, adaptive frames, optional feeds, costs, tenant projection",
     "android_https_preview": "passed: arm64-v8a/x86_64 build, signature and embedded HTTPS backend/research/model-picker content verified",
     "candidate_scanner": "passed: seven strategy/orchestration tests, authentication/input bounds, candidate/watch/empty/chart UI and real VPS read-only scan",
-    "ai_chart": "passed: selected scenario, price anchors/label packing, schema notes, desktop/mobile visual check and nine browser scenarios; scale correction rechecked"
+    "ai_chart": "passed: selected scenario, price anchors/label packing, schema notes and scale; NO_TRADE actual canvas text and mobile screenshots verified with/without context levels"
   },
   "unverified": [
     "live exchange access and end-to-end latency",

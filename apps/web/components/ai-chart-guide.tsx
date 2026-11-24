@@ -1,6 +1,9 @@
 "use client";
 import { useTranslations } from "next-intl";
-import { buildAIChartPlan } from "../../../packages/market/ai-chart.mjs";
+import {
+  buildAIChartPlan,
+  buildAIChartContext,
+} from "../../../packages/market/ai-chart.mjs";
 
 export function AIChartGuide({
   analysis,
@@ -16,12 +19,16 @@ export function AIChartGuide({
   onContext,
   demo,
   locale,
+  reference,
 }: any) {
   const t = useTranslations();
   const plan = buildAIChartPlan(analysis, instrument, index, context, demo);
   if (!plan) return null;
   const setup = plan.setup,
     notes = setup.chart_notes;
+  const contextLevels = plan.noTrade
+    ? buildAIChartContext(analysis, reference, [], 2)
+    : [];
   const number = (value: number) =>
     new Intl.NumberFormat(locale, {
       maximumFractionDigits: value < 1 ? 8 : 4,
@@ -63,28 +70,56 @@ export function AIChartGuide({
           />{" "}
           {t("aiShowPlan")}
         </label>
-        {!plan.noTrade && (
+        {(!plan.noTrade || contextLevels.length > 0) && (
           <label>
             <input
               type="checkbox"
               checked={fit}
               onChange={(e) => onFit(e.target.checked)}
             />{" "}
-            {t("aiFitPlan")}
+            {t(plan.noTrade ? "aiFitContext" : "aiFitPlan")}
           </label>
         )}
-        <label>
-          <input
-            type="checkbox"
-            checked={showContext}
-            onChange={(e) => onContext(e.target.checked)}
-          />{" "}
-          {t("aiShowContext")}
-        </label>
+        {!plan.noTrade && (
+          <label>
+            <input
+              type="checkbox"
+              checked={showContext}
+              onChange={(e) => onContext(e.target.checked)}
+            />{" "}
+            {t("aiShowContext")}
+          </label>
+        )}
       </div>
       <p className="ai-chart-summary">{analysis.summary_short}</p>
       {plan.noTrade ? (
-        <p>{t("aiNoTradeDrawing")}</p>
+        <>
+          <p>{t("aiNoTradeDrawing")}</p>
+          {contextLevels.length ? (
+            <div className="ai-chart-legend">
+              {contextLevels.map((level) => (
+                <article
+                  key={level.id}
+                  className={
+                    "ai-note " +
+                    (level.kind === "support" ? "ai-target" : "ai-stop")
+                  }
+                >
+                  <strong>
+                    {t(
+                      level.kind === "support"
+                        ? "aiSupportLong"
+                        : "aiResistanceLong",
+                    )}{" "}
+                    {level.number}: {number(level.price)}
+                  </strong>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">{t("aiNoContextLevels")}</p>
+          )}
+        </>
       ) : (
         <>
           <p className="muted">{t("aiPlanConditional")}</p>

@@ -556,12 +556,17 @@
   "aiNotesMissing": "Ta analiza nie zawiera osobnej notatki dla tego poziomu. Uzasadnienie AI znajduje się poniżej.",
   "aiOriginalReasoning": "Uzasadnienie AI i unieważnienie planu",
   "aiChartNotesHint": "Opisy pochodzą z tej analizy AI. Rysunek pokazuje plan warunkowy, nie przewidywany przebieg ceny. Strzałka przy etykiecie oznacza poziom poza widokiem.",
-  "aiNoTradeDrawing": "Wynik AI: obserwacja rynku bez aktywnego setupu.",
+  "aiNoTradeDrawing": "AI nie wskazało wejścia. Na wykresie pokazujemy dostępne wsparcia i opory z tej analizy; uzasadnienie i warunki zmiany oceny znajdują się poniżej.",
   "aiPlanConditional": "Wykres przedstawia jeden wybrany scenariusz. Aktywacja wymaga spełnienia opisanego warunku.",
   "aiDrawScenario": "Pokaż na wykresie scenariusz",
   "aiEntryShort": "WEJ",
   "aiTriggerShort": "AKT",
   "aiEntryTriggerShort": "WEJ/AKT",
   "aiSupportShort": "WS",
-  "aiResistanceShort": "OP"
+  "aiResistanceShort": "OP",
+  "aiNoTradeBadge": "NO TRADE · obserwacja AI",
+  "aiFitContext": "Dopasuj skalę do poziomów AI",
+  "aiSupportLong": "Wsparcie AI",
+  "aiResistanceLong": "Opór AI",
+  "aiNoContextLevels": "AI nie podało wsparcia ani oporu. Na wykresie widnieje status NO TRADE; nie wyznaczamy brakujących poziomów."
 }

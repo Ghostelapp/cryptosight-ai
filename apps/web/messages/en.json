@@ -556,12 +556,17 @@
   "aiNotesMissing": "This analysis has no separate note for this level. The original AI rationale is below.",
   "aiOriginalReasoning": "AI rationale and plan invalidation",
   "aiChartNotesHint": "Notes come from this AI analysis. The drawing is a conditional plan, not a predicted price path. An arrow marks a level outside the view.",
-  "aiNoTradeDrawing": "AI result: observe the market without an active setup.",
+  "aiNoTradeDrawing": "AI found no entry. The chart shows available support and resistance from this analysis; the reasoning and conditions for a reassessment are below.",
   "aiPlanConditional": "The chart shows one selected scenario. Activation requires the stated condition.",
   "aiDrawScenario": "Show chart scenario",
   "aiEntryShort": "ENTRY",
   "aiTriggerShort": "TRG",
   "aiEntryTriggerShort": "ENTRY/TRG",
   "aiSupportShort": "SUP",
-  "aiResistanceShort": "RES"
+  "aiResistanceShort": "RES",
+  "aiNoTradeBadge": "NO TRADE · AI observation",
+  "aiFitContext": "Fit scale to AI levels",
+  "aiSupportLong": "AI support",
+  "aiResistanceLong": "AI resistance",
+  "aiNoContextLevels": "AI supplied no support or resistance. The chart shows NO TRADE status; missing levels are not invented."
 }

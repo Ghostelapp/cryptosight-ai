@@ -14,7 +14,10 @@ import {
   Candle,
 } from "../lib/client";
 import { LoaderCircle, RefreshCw } from "lucide-react";
-import { buildAIChartPlan } from "../../../packages/market/ai-chart.mjs";
+import {
+  buildAIChartPlan,
+  buildAIChartContext,
+} from "../../../packages/market/ai-chart.mjs";
 import { registerAIChart } from "../lib/ai-chart-overlay";
 import {
   registerWorkerIndicators,
@@ -887,51 +890,45 @@ export const MarketChart = forwardRef(function MarketChart(
               );
       labels[level.id] = name + " " + format(level.price);
     }
-    const context: any[] = [];
-    if (showAIContext) {
-      const reference = plan.noTrade ? null : plan.setup.entry.price;
-      for (const [kind, values] of [
-        ["support", analysis.key_levels.support],
-        ["resistance", analysis.key_levels.resistance],
-      ] as const) {
-        const valid = (values || [])
-          .filter((v: number) => Number.isFinite(v) && v > 0)
-          .sort((a: number, b: number) =>
-            reference ? Math.abs(a - reference) - Math.abs(b - reference) : 0,
-          );
-        if (
-          valid.length &&
-          !plan.levels.some(
-            (l: any) => Math.abs(l.price - valid[0]) < valid[0] * 1e-10,
+    const reference = plan.noTrade
+      ? c.getDataList().at(-1)?.close
+      : plan.setup.entry.price;
+    const context =
+      showAIContext || plan.noTrade
+        ? buildAIChartContext(
+            analysis,
+            reference,
+            plan.levels,
+            plan.noTrade ? 2 : 1,
           )
-        ) {
-          context.push({
-            id: kind,
-            kind,
-            price: valid[0],
-            color: "#899db7",
-            priority: 20,
-          });
-          labels[kind] =
-            t(kind === "support" ? "aiSupportShort" : "aiResistanceShort") +
-            " " +
-            format(valid[0]);
-        }
-      }
-    }
-    if (plan.noTrade && !context.length) return;
+        : [];
+    for (const level of context)
+      labels[level.id] =
+        t(level.kind === "support" ? "aiSupportShort" : "aiResistanceShort") +
+        level.number +
+        " " +
+        format(level.price);
+    labels.status = t("aiNoTradeBadge");
     c.setOffsetRightDistance(narrow ? 90 : 165);
-    if (fitAIPlan && !plan.noTrade) {
+    const bounds = plan.noTrade
+      ? context.length
+        ? {
+            low: Math.min(...context.map((l) => l.price)),
+            high: Math.max(...context.map((l) => l.price)),
+          }
+        : null
+      : plan.bounds;
+    if (fitAIPlan && bounds) {
       const pad = Math.max(
-        (plan.bounds.high - plan.bounds.low) * 0.08,
-        plan.bounds.high * 0.001,
+        (bounds.high - bounds.low) * 0.08,
+        bounds.high * 0.001,
       );
       c.createIndicator(
         {
           name: "CS_AI_BOUNDS",
           calcParams: [
-            Math.max(plan.bounds.low * 0.1, plan.bounds.low - pad),
-            plan.bounds.high + pad,
+            Math.max(bounds.low * 0.1, bounds.low - pad),
+            bounds.high + pad,
           ],
         },
         true,
@@ -946,7 +943,7 @@ export const MarketChart = forwardRef(function MarketChart(
       points: [
         {
           timestamp: Date.parse(analysis.timestamp),
-          value: plan.noTrade ? context[0].price : plan.setup.entry.price,
+          value: reference,
         },
       ],
       extendData: { plan, labels, dark: theme === "dark", context },

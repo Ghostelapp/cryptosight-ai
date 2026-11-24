@@ -41,6 +41,28 @@ export function registerAIChart(k: any) {
         ),
         xEnd = w - 8;
       const figures: any[] = [];
+      if (plan.noTrade)
+        figures.push({
+          type: "text",
+          ignoreEvent: true,
+          attrs: {
+            x: 10,
+            y: 38,
+            text: labels.status,
+            align: "left",
+            baseline: "middle",
+          },
+          styles: {
+            color: dark ? "#dfb65e" : "#6b4d12",
+            size: narrow ? 10 : 12,
+            family: "Arial, sans-serif",
+            backgroundColor: dark ? "#101b28" : "#ffffff",
+            paddingLeft: 5,
+            paddingRight: 5,
+            paddingTop: 3,
+            paddingBottom: 3,
+          },
+        });
       const line = (y: number, color: string, size = 1, dashed = true) => ({
         type: "line",
         ignoreEvent: true,
@@ -112,7 +134,12 @@ export function registerAIChart(k: any) {
                 l.kind !== "stop",
             ),
           );
-      for (const l of packAIChartLabels(all, h, narrow ? 19 : 22, 14)) {
+      for (const l of packAIChartLabels(
+        all,
+        h,
+        narrow ? 19 : 22,
+        plan.noTrade ? 56 : 14,
+      )) {
         const x = w - 8,
           labelLeft = Math.max(12, w - (narrow ? 145 : 190));
         const text = (l.outside ? (l.y < 0 ? "↑ " : "↓ ") : "") + labels[l.id];

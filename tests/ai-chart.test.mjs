@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildAIChartPlan,
+  buildAIChartContext,
   packAIChartLabels,
 } from "../packages/market/ai-chart.mjs";
 const instrument = {
@@ -10,6 +11,25 @@ const instrument = {
   venue: "bybit",
   market: "spot",
 };
+test("observation context uses nearest real AI levels, deduplicates and never invents missing prices", () => {
+  const a = {
+    key_levels: {
+      support: [70, 95, 90, 95, NaN, -1, "99"],
+      resistance: [120, 105, 110],
+    },
+  };
+  const before = structuredClone(a);
+  assert.deepEqual(
+    buildAIChartContext(a, 100, [], 2).map((l) => l.price),
+    [95, 90, 105, 110],
+  );
+  assert.deepEqual(
+    buildAIChartContext(a, 100, [{ price: 95 }], 1).map((l) => l.price),
+    [90, 105],
+  );
+  assert.deepEqual(buildAIChartContext({}, 100), []);
+  assert.deepEqual(a, before);
+});
 const setup = {
   direction: "LONG",
   entry: { price: 100, zone: [99, 101] },

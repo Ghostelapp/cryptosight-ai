@@ -1595,6 +1595,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                         </div>
                       </div>
                       <AIChartGuide
+                        reference={data?.candles?.at(-1)?.close}
                         analysis={analysis}
                         instrument={instrument}
                         context={analysisEvidence?.context}

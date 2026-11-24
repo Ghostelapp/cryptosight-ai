@@ -556,12 +556,17 @@
   "aiNotesMissing": "Für dieses Niveau fehlt eine eigene Notiz. Die ursprüngliche KI-Begründung steht unten.",
   "aiOriginalReasoning": "KI-Begründung und Ungültigkeit des Plans",
   "aiChartNotesHint": "Notizen stammen aus dieser KI-Analyse. Die Zeichnung ist ein bedingter Plan, kein prognostizierter Kursverlauf. Ein Pfeil markiert ein Niveau außerhalb der Ansicht.",
-  "aiNoTradeDrawing": "KI-Ergebnis: Markt ohne aktives Setup beobachten.",
+  "aiNoTradeDrawing": "Die KI hat keinen Einstieg identifiziert. Der Chart zeigt verfügbare Unterstützungen und Widerstände dieser Analyse; Begründung und Bedingungen für eine Neubewertung stehen unten.",
   "aiPlanConditional": "Der Chart zeigt ein gewähltes Szenario. Die Aktivierung erfordert die genannte Bedingung.",
   "aiDrawScenario": "Chartszenario anzeigen",
   "aiEntryShort": "EIN",
   "aiTriggerShort": "TRG",
   "aiEntryTriggerShort": "EIN/TRG",
   "aiSupportShort": "UNT",
-  "aiResistanceShort": "WID"
+  "aiResistanceShort": "WID",
+  "aiNoTradeBadge": "NO TRADE · KI-Beobachtung",
+  "aiFitContext": "Skala an KI-Niveaus anpassen",
+  "aiSupportLong": "KI-Unterstützung",
+  "aiResistanceLong": "KI-Widerstand",
+  "aiNoContextLevels": "Die KI hat keine Unterstützung oder keinen Widerstand angegeben. Der Chart zeigt den Status NO TRADE; fehlende Niveaus werden nicht erfunden."
 }
