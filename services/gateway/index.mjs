@@ -346,7 +346,9 @@ setInterval(() => {
 const redis = redisClient();
 if (redis) {
   const pub = redis.duplicate();
-  pub.subscribe("cryptosight:drawings");
+  pub.on("error", () => console.error("Drawing subscription Redis unavailable"));
+  await pub.connect();
+  await pub.subscribe("cryptosight:drawings");
   pub.on("message", (_, message) => {
     try {
       const e = JSON.parse(message);
