@@ -4,9 +4,15 @@ import { randomBytes } from "node:crypto";
 test("deep research displays measured evidence and costs, retries the same intent, and stops polling on completion", async ({
   page,
 }) => {
-  const clientErrors:string[]=[];
-  page.on("pageerror", error=>clientErrors.push(error.message));
-  page.on("console", message=>{if(message.type()==="error" && message.text().includes("MISSING_MESSAGE"))clientErrors.push(message.text())});
+  const clientErrors: string[] = [];
+  page.on("pageerror", (error) => clientErrors.push(error.message));
+  page.on("console", (message) => {
+    if (
+      message.type() === "error" &&
+      message.text().includes("MISSING_MESSAGE")
+    )
+      clientErrors.push(message.text());
+  });
   const registered = await page.request.post("/api/v1/auth/register", {
     headers: { origin: "http://127.0.0.1:3100" },
     data: {
@@ -16,6 +22,23 @@ test("deep research displays measured evidence and costs, retries the same inten
     },
   });
   expect(registered.status()).toBe(201);
+  const timestamp = new Date().toISOString();
+  await page.route("**/api/v1/candles?**", (route) =>
+    route.fulfill({
+      json: {
+        candles: Array.from({ length: 200 }, (_, n) => ({
+          timestamp: Date.parse(timestamp) - (199 - n) * 3600000,
+          open: 60000 + Math.sin(n / 9) * 250,
+          high: 60400,
+          low: 59600,
+          close: 60000 + Math.cos(n / 9) * 250,
+          volume: 50,
+        })),
+        indicators: null,
+        provenance: { source: "fixture", stale: false },
+      },
+    }),
+  );
   const id = "550e8400-e29b-41d4-a716-446655440001";
   let submits = 0,
     reads = 0,
@@ -73,7 +96,7 @@ test("deep research displays measured evidence and costs, retries the same inten
         result: {
           symbol: "BTCUSDT",
           timeframe: "1h",
-          timestamp: new Date().toISOString(),
+          timestamp,
           market_regime: "trending",
           bias: "bullish",
           confidence: 55,
@@ -93,7 +116,35 @@ test("deep research displays measured evidence and costs, retries the same inten
               invalidation: "Below support",
               timing: "Wait for trigger",
               reasoning: "Fixture evidence",
+              chart_notes: {
+                entry: "AI: retest of measured support",
+                stop: "AI: below structural support",
+                trigger: "AI: wait for the retest",
+                targets: ["AI: prior resistance target"],
+              },
               time_horizon: "intraday",
+            },
+            {
+              direction: "SHORT",
+              trigger: {
+                type: "candle_close_below",
+                price: 59900,
+                timeframe: "1h",
+              },
+              entry: { type: "limit", price: 60000, zone: [59950, 60050] },
+              stop_loss: 61000,
+              take_profits: [{ price: 58000, size_pct: 100, probability: 45 }],
+              risk_reward: 2,
+              invalidation: "Above 61000",
+              timing: "Wait for a closed candle",
+              reasoning: "Alternative bearish evidence",
+              time_horizon: "intraday",
+              chart_notes: {
+                entry: "AI: alternative resistance retest",
+                stop: "AI: above resistance",
+                trigger: "AI: close below breakdown level",
+                targets: ["AI: lower support target"],
+              },
             },
           ],
           risk: {
@@ -134,6 +185,50 @@ test("deep research displays measured evidence and costs, retries the same inten
   await expect(report).toContainText("Net risk/reward");
   await expect(report).toContainText("calendar");
   await report.screenshot({ path: "test-results/research-evidence.png" });
+  const guide = page.getByRole("region", {
+    name: "Chart plan — AI explanation",
+    exact: true,
+  });
+  await expect(guide).toBeVisible();
+  await expect(guide).toContainText("AI: retest of measured support");
+  await expect(guide).toContainText("AI: prior resistance target");
+  await page.locator(".chart-shell").first().scrollIntoViewIfNeeded();
+  await page.waitForTimeout(500);
+  await page
+    .locator(".chart-shell")
+    .first()
+    .screenshot({ path: "test-results/ai-chart-long.png" });
+  await guide.getByRole("combobox").selectOption("1");
+  await expect(guide).toContainText("Alternative bearish evidence");
+  await expect(guide).not.toContainText("AI: prior resistance target");
+  await guide
+    .getByRole("checkbox", { name: "AI drawing", exact: true })
+    .uncheck();
+  await guide
+    .getByRole("checkbox", { name: "AI drawing", exact: true })
+    .check();
+  await guide
+    .getByRole("checkbox", { name: "Fit scale to SL and TP", exact: true })
+    .uncheck();
+  await guide
+    .getByRole("checkbox", { name: "Fit scale to SL and TP", exact: true })
+    .check();
+  await guide
+    .getByRole("checkbox", { name: "AI support and resistance", exact: true })
+    .check();
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.locator(".chart-shell").first().scrollIntoViewIfNeeded();
+  await page.waitForTimeout(500);
+  await page
+    .locator(".chart-shell")
+    .first()
+    .screenshot({ path: "test-results/ai-chart-mobile.png" });
+  await guide.screenshot({ path: "test-results/ai-chart-guide-mobile.png" });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
   expect(reads).toBe(2);
   // Observe two nominal poll periods after the terminal status.
   await page.waitForTimeout(4500);

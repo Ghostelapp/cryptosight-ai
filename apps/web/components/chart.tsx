@@ -14,6 +14,8 @@ import {
   Candle,
 } from "../lib/client";
 import { LoaderCircle, RefreshCw } from "lucide-react";
+import { buildAIChartPlan } from "../../../packages/market/ai-chart.mjs";
+import { registerAIChart } from "../lib/ai-chart-overlay";
 import {
   registerWorkerIndicators,
   priceIndicators,
@@ -36,6 +38,7 @@ function serialize(o: any) {
 function customOverlays(k: any) {
   if (registered) return;
   registered = true;
+  registerAIChart(k);
   for (const name of [
     "csRect",
     "csEllipse",
@@ -209,6 +212,10 @@ export const MarketChart = forwardRef(function MarketChart(
     user,
     analysis,
     showOverlay,
+    analysisContext,
+    selectedAISetup = 0,
+    fitAIPlan = true,
+    showAIContext = false,
     onData,
     onStatus,
     onError,
@@ -843,43 +850,129 @@ export const MarketChart = forwardRef(function MarketChart(
   }, [indicatorNames.join(","), period, loading]);
   useEffect(() => {
     const c = chart.current;
-    if (!c) return;
+    if (!c || loading) return;
     c.removeOverlay({ groupId: "ai" });
-    if (!analysis || !showOverlay) return;
-    const levels = [
-      ...analysis.key_levels.support.map((v: any) => ({ v, color: "#708ba6" })),
-      ...analysis.key_levels.resistance.map((v: any) => ({
-        v,
-        color: "#708ba6",
-      })),
-    ];
-    for (const s of analysis.setups)
-      if (s.direction !== "NO_TRADE")
-        levels.push(
-          { v: s.entry.price, color: "#43c4dd" },
-          { v: s.stop_loss, color: "#e66573" },
-          ...s.take_profits.map((v: any) => ({ v: v.price, color: "#36cfa6" })),
-        );
-    for (const l of levels)
-      c.createOverlay({
-        name: "horizontalStraightLine",
-        groupId: "ai",
-        lock: true,
-        points: [{ value: l.v }],
-        styles: { line: { color: l.color, style: "dashed" } },
-      });
-    for (const z of analysis.key_levels.liquidity_zones || [])
-      c.createOverlay({
-        name: "csRect",
-        groupId: "ai",
-        lock: true,
-        points: [
-          { timestamp: Date.now() - 86400000, value: z.low },
-          { timestamp: Date.now(), value: z.high },
-        ],
-        styles: { line: { color: "#c2a2fa" } },
-      });
-  }, [analysis, showOverlay, loading]);
+    c.removeIndicator("candle_pane", "CS_AI_BOUNDS");
+    const narrow = window.matchMedia("(max-width: 850px)").matches || compact;
+    const plan = showOverlay
+      ? buildAIChartPlan(
+          analysis,
+          instrument,
+          selectedAISetup,
+          analysisContext,
+          demo,
+        )
+      : null;
+    if (!plan) {
+      c.setOffsetRightDistance(narrow ? 24 : 50);
+      return;
+    }
+    const format = (v: number) =>
+      new Intl.NumberFormat(locale, {
+        maximumFractionDigits: v < 1 ? 8 : 4,
+      }).format(v);
+    const labels: Record<string, string> = {};
+    for (const level of plan.levels) {
+      const name =
+        level.kind === "target"
+          ? "TP" + level.target
+          : level.kind === "stop"
+            ? "SL"
+            : t(
+                level.kind === "trigger"
+                  ? "aiTriggerShort"
+                  : level.kind === "entry_trigger"
+                    ? "aiEntryTriggerShort"
+                    : "aiEntryShort",
+              );
+      labels[level.id] = name + " " + format(level.price);
+    }
+    const context: any[] = [];
+    if (showAIContext) {
+      const reference = plan.noTrade ? null : plan.setup.entry.price;
+      for (const [kind, values] of [
+        ["support", analysis.key_levels.support],
+        ["resistance", analysis.key_levels.resistance],
+      ] as const) {
+        const valid = (values || [])
+          .filter((v: number) => Number.isFinite(v) && v > 0)
+          .sort((a: number, b: number) =>
+            reference ? Math.abs(a - reference) - Math.abs(b - reference) : 0,
+          );
+        if (
+          valid.length &&
+          !plan.levels.some(
+            (l: any) => Math.abs(l.price - valid[0]) < valid[0] * 1e-10,
+          )
+        ) {
+          context.push({
+            id: kind,
+            kind,
+            price: valid[0],
+            color: "#899db7",
+            priority: 20,
+          });
+          labels[kind] =
+            t(kind === "support" ? "aiSupportShort" : "aiResistanceShort") +
+            " " +
+            format(valid[0]);
+        }
+      }
+    }
+    if (plan.noTrade && !context.length) return;
+    c.setOffsetRightDistance(narrow ? 90 : 165);
+    if (fitAIPlan && !plan.noTrade) {
+      const pad = Math.max(
+        (plan.bounds.high - plan.bounds.low) * 0.08,
+        plan.bounds.high * 0.001,
+      );
+      c.createIndicator(
+        {
+          name: "CS_AI_BOUNDS",
+          calcParams: [
+            Math.max(plan.bounds.low * 0.1, plan.bounds.low - pad),
+            plan.bounds.high + pad,
+          ],
+        },
+        true,
+        { id: "candle_pane" },
+      );
+    }
+    c.createOverlay({
+      name: "csAIPlan",
+      groupId: "ai",
+      lock: true,
+      zLevel: 0,
+      points: [
+        {
+          timestamp: Date.parse(analysis.timestamp),
+          value: plan.noTrade ? context[0].price : plan.setup.entry.price,
+        },
+      ],
+      extendData: { plan, labels, dark: theme === "dark", context },
+    });
+    return () => {
+      c.removeOverlay({ groupId: "ai" });
+      c.removeIndicator("candle_pane", "CS_AI_BOUNDS");
+    };
+  }, [
+    analysis,
+    showOverlay,
+    loading,
+    selectedAISetup,
+    analysisContext,
+    fitAIPlan,
+    showAIContext,
+    instrument.symbol,
+    instrument.venue,
+    instrument.market,
+    instrument.timeframe,
+    demo,
+    locale,
+    theme,
+    compact,
+    indicatorNames.join(","),
+  ]);
   useEffect(() => {
     if (
       !syncPoint?.timestamp ||

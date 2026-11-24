@@ -1,5 +1,13 @@
 # Analysis engine v2
 
+## Readable AI chart plans
+
+The web chart shows one selected setup at a time. Entry/activation, SL and TP carry colored price labels; coincident entry and activation share a label. The entry zone and conditional risk/reward areas use translucent shading. Label displacement preserves the true price anchor. Optional nearest support/resistance levels are hidden by default. Scale fitting includes SL and all targets, and offscreen labels carry arrows when fitting is disabled. Drawings are limited to the matching symbol, timeframe and stored venue/market context, and are disabled in sample mode. NO_TRADE has no entry/target drawing. User drawings retain their separate storage group.
+
+Below the chart, “Chart plan — AI explanation” includes the selected scenario's reasoning, timing, invalidation and level notes. Prompt `crypto-analyst-v3` asks for one evidence-grounded sentence per entry, activation, stop and target in `chart_notes`. Each note is bounded to 300 characters, and validation rejects a target-note count different from the target count. The field remains optional for stored analyses and older provider outputs; missing notes are identified explicitly while the original reasoning remains available. There is no extra AI call for drawing or explanation. Price lines and bands are a conditional setup, not a forecast price path. PNG export includes the selected setup and its explanations.
+
+The native app continues to display the existing analysis results; this drawing update is in the web chart, including mobile browsers.
+
 The default web and native research mode is now **deep**. Quick and explain remain available. Deep research collects the selected timeframe and two context frames appropriate to its horizon: for example 1m/15m/1h, 1h/4h/1d, or 1d/1w/1M. Weekly/monthly research also includes a shorter context frame. It does not silently substitute another venue.
 
 ## Evidence before generation

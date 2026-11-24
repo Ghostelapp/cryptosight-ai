@@ -34,6 +34,40 @@ const result = {
   summary_short: "Wait",
   summary_detailed: "Wait",
 };
+test("chart notes remain optional for history but validate length and target correspondence", () => {
+  const setup = {
+    direction: "LONG",
+    trigger: { type: "price_touch", price: 100, timeframe: "1h" },
+    entry: { type: "limit", price: 100, zone: [99, 101] },
+    stop_loss: 90,
+    take_profits: [{ price: 120, size_pct: 100, probability: 50 }],
+    risk_reward: 2,
+    invalidation: "Below support",
+    timing: "Wait",
+    reasoning: "Structure",
+    time_horizon: "intraday",
+  };
+  const check = (s) => validateAnalysis({ ...result, setups: [s] }, snap);
+  assert.doesNotThrow(() => check(setup));
+  const notes = {
+    entry: "Retest of support",
+    stop: "Below support",
+    trigger: "Wait for retest",
+    targets: ["Prior resistance"],
+  };
+  assert.doesNotThrow(() => check({ ...setup, chart_notes: notes }));
+  assert.throws(
+    () =>
+      check({
+        ...setup,
+        chart_notes: { ...notes, targets: ["First", "Extra"] },
+      }),
+    /invalid_ai_chart_notes/,
+  );
+  assert.throws(() =>
+    check({ ...setup, chart_notes: { ...notes, entry: "x".repeat(301) } }),
+  );
+});
 test("semantic validation rejects mismatched snapshots and nonsensical trade levels", () => {
   assert.throws(() => validateAnalysis({ ...result, symbol: "ETHUSDT" }, snap));
   const long = {

@@ -245,6 +245,43 @@
                   "price",
                   "timeframe"
                 ]
+              },
+              "chart_notes": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "entry": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "stop": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "targets": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 5,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 300
+                    }
+                  }
+                },
+                "required": [
+                  "entry",
+                  "stop",
+                  "trigger",
+                  "targets"
+                ]
               }
             },
             "required": [

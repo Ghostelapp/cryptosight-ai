@@ -2,6 +2,7 @@
 import { ModelPicker } from "./model-picker";
 import { ResearchEvidence } from "./research-evidence";
 import { CandidateScanner } from "./candidate-scanner";
+import { AIChartGuide } from "./ai-chart-guide";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { PaperPanel } from "./paper-panel";
@@ -219,6 +220,9 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     [analysisId, setAnalysisId] = useState(""),
     [analysisStatus, setAnalysisStatus] = useState(""),
     [showOverlay, setShowOverlay] = useState(true),
+    [aiSetupIndex, setAISetupIndex] = useState(0),
+    [aiFitPlan, setAIFitPlan] = useState(true),
+    [aiContextLevels, setAIContextLevels] = useState(false),
     [chatMessage, setChatMessage] = useState(""),
     [chatMessages, setChatMessages] = useState<any[]>([]),
     [notifications, setNotifications] = useState<any[]>([]);
@@ -481,6 +485,8 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
   }, [toast]);
   useEffect(() => {
     setAnalysis(null);
+    setAnalysisEvidence(null);
+    setAISetupIndex(0);
     setAnalysisId("");
     setAnalysisStatus("");
     setData(null);
@@ -634,7 +640,9 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
   }, [tab, user?.id]);
   useEffect(() => {
     if (!analysisId) return;
-    let stopped = false, finished = false, failures = 0;
+    let stopped = false,
+      finished = false,
+      failures = 0;
     const poll = async () => {
       try {
         const r = await api("analyses/" + analysisId);
@@ -644,7 +652,12 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
         if (r.status === "completed") {
           finished = true;
           setAnalysis(r.result);
-          setAnalysisEvidence({research:r.research,metrics:r.trade_metrics || []});
+          setAnalysisEvidence({
+            research: r.research,
+            metrics: r.trade_metrics || [],
+            context: r.request_config,
+          });
+          setAISetupIndex(0);
           setEntry(r.result.setups[0]?.entry?.price || "");
           setStop(r.result.setups[0]?.stop_loss || "");
         }
@@ -655,14 +668,28 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
       } catch (e: any) {
         if (stopped) return;
         failures++;
-        if (["authentication_required","account_suspended","not_found"].includes(e.message)) finished=true;
+        if (
+          [
+            "authentication_required",
+            "account_suspended",
+            "not_found",
+          ].includes(e.message)
+        )
+          finished = true;
         if (finished || failures === 3) error(e.message);
       } finally {
-        if (!stopped && !finished) analysisInterval.current = setTimeout(poll, Math.min(15000,2000 * 2 ** Math.min(failures,3)));
+        if (!stopped && !finished)
+          analysisInterval.current = setTimeout(
+            poll,
+            Math.min(15000, 2000 * 2 ** Math.min(failures, 3)),
+          );
       }
     };
     void poll();
-    return () => { stopped = true; clearTimeout(analysisInterval.current); };
+    return () => {
+      stopped = true;
+      clearTimeout(analysisInterval.current);
+    };
   }, [analysisId]);
   useEffect(() => {
     if (!backtestId) return;
@@ -694,13 +721,16 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     mode,
     indicatorPeriod: period,
   });
-  const analysisIntent = useRef<{ signature:string; key:string } | null>(null);
+  const analysisIntent = useRef<{ signature: string; key: string } | null>(
+    null,
+  );
   const runAnalysis = () => {
     if (!protect()) return;
     perform("analysis", async () => {
-      const config = analysisConfig(), signature = JSON.stringify(config);
+      const config = analysisConfig(),
+        signature = JSON.stringify(config);
       if (analysisIntent.current?.signature !== signature)
-        analysisIntent.current = {signature,key:crypto.randomUUID()};
+        analysisIntent.current = { signature, key: crypto.randomUUID() };
       const r = await api("analyses", {
         method: "POST",
         headers: { "idempotency-key": analysisIntent.current.key },
@@ -1362,23 +1392,41 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                                         " · " +
                                         instrument.timeframe,
                                       analysis.summary_short,
-                                      ...analysis.setups.map((s: any) =>
-                                        s.direction === "NO_TRADE"
-                                          ? t("noTrade") + " · " + s.reasoning
-                                          : s.direction +
-                                            " · " +
-                                            t("entry") +
+                                      ...analysis.setups
+                                        .filter(
+                                          (_: any, n: number) =>
+                                            n === aiSetupIndex,
+                                        )
+                                        .flatMap((s: any) => [
+                                          s.direction === "NO_TRADE"
+                                            ? t("noTrade") + " · " + s.reasoning
+                                            : s.direction +
+                                              " · " +
+                                              t("entry") +
+                                              ": " +
+                                              fmt(s.entry.price) +
+                                              " · " +
+                                              t("stop") +
+                                              ": " +
+                                              fmt(s.stop_loss) +
+                                              " · TP: " +
+                                              s.take_profits
+                                                .map((p: any) => fmt(p.price))
+                                                .join(", "),
+                                          ...(s.chart_notes
+                                            ? [
+                                                s.chart_notes.entry,
+                                                s.chart_notes.trigger,
+                                                s.chart_notes.stop,
+                                                ...s.chart_notes.targets,
+                                              ]
+                                            : []),
+                                          s.reasoning,
+                                          t("timing") + ": " + s.timing,
+                                          t("invalidation") +
                                             ": " +
-                                            fmt(s.entry.price) +
-                                            " · " +
-                                            t("stop") +
-                                            ": " +
-                                            fmt(s.stop_loss) +
-                                            " · TP: " +
-                                            s.take_profits
-                                              .map((p: any) => fmt(p.price))
-                                              .join(", "),
-                                      ),
+                                            s.invalidation,
+                                        ]),
                                       t("disclaimer"),
                                     ]
                                   : [],
@@ -1502,6 +1550,10 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                               user={user}
                               analysis={analysis}
                               showOverlay={showOverlay}
+                              analysisContext={analysisEvidence?.context}
+                              selectedAISetup={aiSetupIndex}
+                              fitAIPlan={aiFitPlan}
+                              showAIContext={aiContextLevels}
                               onData={
                                 index === 0
                                   ? (d: any) => {
@@ -1542,6 +1594,21 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                           ))}
                         </div>
                       </div>
+                      <AIChartGuide
+                        analysis={analysis}
+                        instrument={instrument}
+                        context={analysisEvidence?.context}
+                        index={aiSetupIndex}
+                        onSelect={setAISetupIndex}
+                        visible={showOverlay}
+                        onVisible={setShowOverlay}
+                        fit={aiFitPlan}
+                        onFit={setAIFitPlan}
+                        showContext={aiContextLevels}
+                        onContext={setAIContextLevels}
+                        demo={demo}
+                        locale={locale}
+                      />
                       <div className="chart-footer">
                         <span className={"connection " + connection}>
                           <i />
@@ -1703,7 +1770,10 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                             <span>{date(analysis.timestamp)}</span>
                           </div>
                           <p className="summary">{analysis.summary_short}</p>
-                          <ResearchEvidence research={analysisEvidence?.research} metrics={analysisEvidence?.metrics} />
+                          <ResearchEvidence
+                            research={analysisEvidence?.research}
+                            metrics={analysisEvidence?.metrics}
+                          />
                           <div className="confidence">
                             <div>
                               <span>{t("confidence")}</span>
@@ -1761,6 +1831,16 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                                   <span>{tp.size_pct}%</span>
                                 </div>
                               ))}
+                              <button
+                                className="button"
+                                aria-pressed={aiSetupIndex === index}
+                                onClick={() => {
+                                  setAISetupIndex(index);
+                                  setShowOverlay(true);
+                                }}
+                              >
+                                {t("aiDrawScenario")} {index + 1}
+                              </button>
                               <details open={s.direction === "NO_TRADE"}>
                                 <summary>{t("reasoning")}</summary>
                                 <p>{s.reasoning}</p>
@@ -2000,10 +2080,20 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               )}
               {tab === "screener" && (
                 <>
-                  <CandidateScanner instrument={instrument} locale={locale} protect={protect} onSelect={(row)=>{
-                    updateInstrument({venue:row.venue,market:row.market,symbol:row.symbol,timeframe:row.timeframe});
-                    setTab("terminal");
-                  }} />
+                  <CandidateScanner
+                    instrument={instrument}
+                    locale={locale}
+                    protect={protect}
+                    onSelect={(row) => {
+                      updateInstrument({
+                        venue: row.venue,
+                        market: row.market,
+                        symbol: row.symbol,
+                        timeframe: row.timeframe,
+                      });
+                      setTab("terminal");
+                    }}
+                  />
                   <h2>{t("watchlistScans")}</h2>
                   <p className="muted">{t("watchlistScansHint")}</p>
                   <div className="form-row">
@@ -2827,7 +2917,9 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                                 });
                                 setKeyValue("");
                                 setKeys(await api("credentials"));
-                                setModelCatalogRevision((revision) => revision + 1);
+                                setModelCatalogRevision(
+                                  (revision) => revision + 1,
+                                );
                                 setToast(t("saved"));
                               })
                             }
@@ -2848,7 +2940,9 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                                       body: {},
                                     });
                                     setKeys(await api("credentials"));
-                                    setModelCatalogRevision((revision) => revision + 1);
+                                    setModelCatalogRevision(
+                                      (revision) => revision + 1,
+                                    );
                                   })
                                 }
                               >
