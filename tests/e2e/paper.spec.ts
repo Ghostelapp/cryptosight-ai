@@ -34,12 +34,14 @@ test("paper ticket, reserved limit cancellation, SL/TP editing and partial/full 
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith("/account")) return route.fulfill({ json: overview() });
     const body = route.request().postDataJSON();
+    expect(body.leverage).toBe(10);
     expect(route.request().headers()["idempotency-key"]).toBeTruthy();
     const o = {
       id: crypto.randomUUID(),
       symbol: body.symbol,
       venue: body.venue,
       market: body.market,
+      leverage: body.leverage,
       direction: body.direction,
       quantity: String(body.quantity),
       initial_quantity: String(body.quantity),
@@ -48,7 +50,7 @@ test("paper ticket, reserved limit cancellation, SL/TP editing and partial/full 
       fill_price: created ? "99" : null,
       stop_loss: String(body.stopLoss),
       take_profit: String(body.takeProfit),
-      reserved: created ? "0" : "200.2",
+      reserved: created ? "0" : "20.2",
       version: 1,
       status: created ? "filled" : "pending",
       pnl: null,
@@ -122,16 +124,29 @@ test("paper ticket, reserved limit cancellation, SL/TP editing and partial/full 
   await page
     .getByRole("button", { name: "Paper trading", exact: true })
     .click();
+  const ticket = page.getByRole("region", { name: "New order", exact: true });
+  await expect(
+    ticket.getByRole("combobox", { name: "Leverage", exact: true }),
+  ).toBeDisabled();
+  await ticket
+    .getByRole("button", {
+      name: "Want leverage? Switch to futures →",
+      exact: true,
+    })
+    .click();
+  await ticket
+    .getByRole("combobox", { name: "Leverage", exact: true })
+    .selectOption("10");
   await page
     .getByRole("combobox", { name: "Order type", exact: true })
     .selectOption("limit");
   await page.getByLabel("Limit price", { exact: true }).fill("100");
   await page.getByLabel("Quantity", { exact: true }).fill("2");
+  await expect(ticket.locator(".paper-estimate")).toContainText("20 USDT");
+  await page.getByText("SL / TP and risk sizing", { exact: true }).click();
   await page.getByLabel("Stop-loss", { exact: true }).fill("95");
   await page.getByLabel("Take-profit", { exact: true }).fill("120");
-  await page
-    .getByRole("button", { name: "Place limit order", exact: true })
-    .click();
+  await page.getByRole("button", { name: /^Place limit order/ }).click();
   await expect(
     page.getByRole("button", { name: "Cancel order", exact: true }),
   ).toBeVisible();
@@ -139,11 +154,25 @@ test("paper ticket, reserved limit cancellation, SL/TP editing and partial/full 
   await expect(
     page.getByRole("button", { name: "Cancel order", exact: true }),
   ).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Place limit order", exact: true })
-    .click();
-  const position = page.locator("article.form-card");
+  await page.getByRole("button", { name: /^Place limit order/ }).click();
+  const position = page.locator("article.paper-position");
   await expect(position).toBeVisible();
+  await expect(position).toContainText("LONG · 10×");
+  await page.getByText("SL / TP and risk sizing", { exact: true }).click();
+  await page
+    .getByRole("region", { name: "Paper trading", exact: true })
+    .screenshot({ path: "test-results/paper-compact-desktop.png" });
+  await page.setViewportSize({ width: 360, height: 800 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("region", { name: "Paper trading", exact: true })
+    .screenshot({ path: "test-results/paper-compact-mobile.png" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await position.getByText("Manage · SL / TP", { exact: true }).click();
   await position.getByLabel("Stop-loss", { exact: true }).fill("105");
   await position
     .getByRole("button", { name: "Save SL/TP", exact: true })
@@ -156,6 +185,7 @@ test("paper ticket, reserved limit cancellation, SL/TP editing and partial/full 
     .getByRole("button", { name: "Close 100%", exact: true })
     .click();
   await expect(position).toHaveCount(0);
+  await page.getByRole("tab", { name: /^Trade history/ }).click();
   await expect(page.locator("tbody").first().locator("tr")).toHaveCount(2);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(

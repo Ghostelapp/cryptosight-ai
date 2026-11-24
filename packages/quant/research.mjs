@@ -321,14 +321,18 @@ export function settlePaperPosition({
   quantity,
   entryFees = 0,
   feeBps = 10,
+  leverage = 1,
 }) {
   if (
     !["LONG", "SHORT"].includes(direction) ||
     ![entry, exit, quantity].every((n) => Number.isFinite(n) && n > 0) ||
-    ![entryFees, feeBps].every((n) => Number.isFinite(n) && n >= 0)
+    ![entryFees, feeBps].every((n) => Number.isFinite(n) && n >= 0) ||
+    !Number.isInteger(leverage) ||
+    leverage < 1 ||
+    leverage > 20
   )
     throw new Error("invalid_risk");
-  const collateral = entry * quantity,
+  const collateral = (entry * quantity) / leverage,
     exitFees = (exit * quantity * feeBps) / 10000,
     rawPnl =
       (direction === "LONG" ? exit - entry : entry - exit) * quantity -

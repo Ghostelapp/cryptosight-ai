@@ -1,8 +1,8 @@
 {
   "name": "CryptoSight AI",
-  "version": "1.6.2-rc.2",
+  "version": "1.7.0-rc.1",
   "validation": {
-    "unit_integration_passed": 118,
+    "unit_integration_passed": 124,
     "live_tests_skipped": 3,
     "strict_typescript": "passed",
     "production_build": "passed",
@@ -30,7 +30,8 @@
     "analysis_engine": "passed: closed-bar evidence, adaptive frames, optional feeds, costs, tenant projection",
     "android_https_preview": "passed: arm64-v8a/x86_64 build, signature and embedded HTTPS backend/research/model-picker content verified",
     "candidate_scanner": "passed: seven strategy/orchestration tests, authentication/input bounds, candidate/watch/empty/chart UI and real VPS read-only scan",
-    "ai_chart": "passed: selected scenario, price anchors/label packing, schema notes and scale; NO_TRADE actual canvas text and mobile screenshots verified with/without context levels"
+    "ai_chart": "passed: selected scenario, price anchors/label packing, schema notes and scale; NO_TRADE actual canvas text and mobile screenshots verified with/without context levels",
+    "paper_leverage": "passed: margin/fees, partial exits, limit refunds/fills, exhaustion on both sides, concurrent reservations, migration replay and compact desktop/mobile browser flow"
   },
   "unverified": [
     "live exchange access and end-to-end latency",
@@ -71,9 +72,9 @@
     "editable_sl_tp": true,
     "partial_exits": true,
     "execution_ledger": true,
-    "required_migration": "006_paper_trading.sql",
+    "required_migration": "008_paper_leverage.sql",
     "automatic_execution": "persistent worker required; 5-second sampling",
-    "leverage": 1
+    "leverage": {"spot":1,"perpetual_max":20,"collateral_mode":"isolated","liquidation_model":"sampled collateral exhaustion including exit fee; excludes venue maintenance margin"}
   },
   "validated_at": "2026-11-24",
   "integrated_sources": {
@@ -119,7 +120,7 @@
   },
   "analysis_engine": {
     "version": 2,
-    "prompt_version": "crypto-analyst-v2",
+    "prompt_version": "crypto-analyst-v3",
     "default_mode": "deep",
     "adaptive_timeframes": true,
     "closed_candle_evidence": true,

@@ -8580,6 +8580,12 @@
                     "minimum": 1e-08,
                     "maximum": 1000000
                   },
+                  "leverage": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 20,
+                    "default": 1
+                  },
                   "orderType": {
                     "type": "string",
                     "enum": [
@@ -8628,6 +8634,22 @@
                       "required": [
                         "limitPrice"
                       ]
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "market": {
+                          "const": "spot"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "leverage": {
+                          "const": 1
+                        }
+                      }
                     }
                   }
                 ]

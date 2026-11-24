@@ -2560,6 +2560,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                   )}
                   {tab === "paper" && (
                     <PaperPanel
+                      onMarketChange={() => updateInstrument({market:"perpetual"})}
                       key={[
                         instrument.venue,
                         instrument.market,

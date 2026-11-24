@@ -1,5 +1,34 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { paperLiquidationPrice } from "../packages/quant/paper-model.mjs";
+import { settlePaperPosition } from "../packages/quant/research.mjs";
+test("paper liquidation estimates match fee-inclusive isolated collateral exhaustion for either direction", () => {
+  for (const direction of ["LONG", "SHORT"])
+    for (const leverage of [2, 5, 10, 20]) {
+      const level = paperLiquidationPrice(100, direction, leverage),
+        sign = direction === "LONG" ? 1 : -1;
+      assert.equal(
+        settlePaperPosition({
+          direction,
+          entry: 100,
+          exit: level + sign * 0.0001,
+          quantity: 2,
+          leverage,
+        }).collateralExhausted,
+        false,
+      );
+      const exhausted = settlePaperPosition({
+        direction,
+        entry: 100,
+        exit: level - sign * 0.0001,
+        quantity: 2,
+        leverage,
+      });
+      assert.equal(exhausted.collateralExhausted, true);
+      assert.equal(exhausted.returnedCollateral, 0);
+    }
+  assert.equal(paperLiquidationPrice(100, "LONG", 1), null);
+});
 import { indicators, heikinAshi } from "../packages/quant/indicators.mjs";
 import {
   positionSize,

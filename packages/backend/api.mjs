@@ -1237,6 +1237,7 @@ export async function handle(req) {
         .extend({
           direction: z.enum(["LONG", "SHORT"]),
           quantity: positive.min(1e-8).max(1000000),
+          leverage: z.number().int().min(1).max(20).default(1),
           orderType: z.enum(["market", "limit"]).default("market"),
           limitPrice: positive.optional(),
           stopLoss: positive.nullable().optional(),

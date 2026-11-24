@@ -95,6 +95,14 @@ async function riskGuard(tx, a, settings = {}) {
     throw new Error("daily_loss_limit");
 }
 export async function placePaper(user, b, key) {
+  const leverage = b.leverage ?? 1;
+  if (
+    !Number.isInteger(leverage) ||
+    leverage < 1 ||
+    leverage > 20 ||
+    (b.market !== "perpetual" && leverage !== 1)
+  )
+    throw new Error("invalid_risk");
   const account = (
     await query("SELECT id FROM paper_accounts WHERE user_id=$1", [user.id])
   ).rows[0];
@@ -116,6 +124,7 @@ export async function placePaper(user, b, key) {
         b.limitPrice ?? null,
         b.stopLoss ?? null,
         b.takeProfit ?? null,
+        ...(leverage === 1 ? [] : [leverage]),
       ]),
     )
     .digest("hex");
@@ -150,7 +159,7 @@ export async function placePaper(user, b, key) {
     ).rows[0];
     if (duplicate) return replay(duplicate);
     await riskGuard(tx, a, user.settings);
-    const cost = fill.notional + fill.fees;
+    const cost = fill.notional / leverage + fill.fees;
     if (+a.balance < cost) throw new Error("insufficient_balance");
     await tx.query(
       "UPDATE paper_accounts SET balance=balance-$1,version=version+1 WHERE id=$2",
@@ -158,7 +167,7 @@ export async function placePaper(user, b, key) {
     );
     return (
       await tx.query(
-        "INSERT INTO paper_orders(account_id,symbol,direction,quantity,initial_quantity,order_type,limit_price,fill_price,fees,status,idempotency_key,venue,market,stop_loss,take_profit,reserved,request_fingerprint) VALUES($1,$2,$3,$4,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *",
+        "INSERT INTO paper_orders(account_id,symbol,direction,quantity,initial_quantity,order_type,limit_price,fill_price,fees,status,idempotency_key,venue,market,stop_loss,take_profit,reserved,request_fingerprint,leverage) VALUES($1,$2,$3,$4,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *",
         [
           a.id,
           b.symbol,
@@ -176,6 +185,7 @@ export async function placePaper(user, b, key) {
           b.takeProfit ?? null,
           type === "limit" ? cost : 0,
           fingerprint,
+          leverage,
         ],
       )
     ).rows[0];
@@ -285,6 +295,7 @@ export async function closePaper(
       exit: fill.price,
       quantity: q,
       entryFees,
+      leverage: +o.leverage,
     });
     const full = q === +o.quantity;
     const exit = (
@@ -377,7 +388,8 @@ export async function paperTick() {
             );
             return;
           }
-          const difference = +current.reserved - fill.notional - fill.fees;
+          const difference =
+            +current.reserved - fill.notional / +current.leverage - fill.fees;
           if (+a.balance + difference < 0)
             throw new Error("insufficient_balance");
           await tx.query(
@@ -404,7 +416,16 @@ export async function paperTick() {
             ? mark >= +o.take_profit
             : mark <= +o.take_profit);
         const reason =
-          o.pending_exit ??
+          (+o.leverage > 1 &&
+          settlePaperPosition({
+            direction: o.direction,
+            entry: +o.fill_price,
+            exit: mark,
+            quantity: +o.quantity,
+            leverage: +o.leverage,
+          }).collateralExhausted
+            ? "liquidation"
+            : o.pending_exit) ??
           (stop ? "stop_loss" : target ? "take_profit" : null);
         if (reason) {
           await transaction(async (tx) => {

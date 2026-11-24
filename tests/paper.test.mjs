@@ -99,6 +99,170 @@ after(async () => {
   globalThis.fetch = originalFetch;
   await (await db()).close();
 });
+test("futures leverage reserves margin plus full notional fees and releases proportional margin on partial exits", async () => {
+  const r = await request(
+    "paper/orders",
+    order({ market: "perpetual", leverage: 10 }),
+    owner,
+    "leveraged-entry",
+  );
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.leverage, 10);
+  let a = (await request("paper/account")).data;
+  assert.ok(Math.abs(+a.account.balance - 9979.598) < 1e-8);
+  assert.equal(a.exposure[0].collateral, 20.2);
+  assert.ok(a.equity < 10000 && a.equity > 9997);
+  assert.equal(
+    (
+      await request(
+        "paper/orders",
+        order({ market: "perpetual", leverage: 10 }),
+        owner,
+        "leveraged-entry",
+      )
+    ).data.id,
+    r.data.id,
+  );
+  assert.equal(
+    (
+      await request(
+        "paper/orders",
+        order({ market: "perpetual", leverage: 5 }),
+        owner,
+        "leveraged-entry",
+      )
+    ).status,
+    409,
+  );
+  bid = 110;
+  assert.equal(
+    (
+      await request(
+        "paper-close/" + r.data.id,
+        { quantity: 1 },
+        owner,
+        "leveraged-partial",
+      )
+    ).status,
+    200,
+  );
+  a = (await request("paper/account")).data;
+  assert.ok(Math.abs(+a.account.balance - 9998.588) < 1e-8);
+  assert.equal(a.exposure[0].collateral, 10.1);
+  assert.equal(
+    (await request("paper-close/" + r.data.id, {}, owner, "leveraged-final"))
+      .status,
+    200,
+  );
+  a = (await request("paper/account")).data;
+  assert.ok(Math.abs(+a.account.balance - 10017.578) < 1e-8);
+  assert.equal(a.orders[0].status, "closed");
+});
+test("leveraged limit reservation refunds cancellation once and price improvement releases excess margin", async () => {
+  const pending = order({
+    market: "perpetual",
+    leverage: 5,
+    orderType: "limit",
+    limitPrice: 99,
+  });
+  let r = await request("paper/orders", pending, owner, "margin-limit-cancel");
+  assert.equal(r.status, 200);
+  assert.ok(Math.abs(+r.data.reserved - 39.798) < 1e-8);
+  await request("paper-cancel/" + r.data.id, {});
+  await request("paper-cancel/" + r.data.id, {});
+  assert.equal(+(await request("paper/account")).data.account.balance, 10000);
+  r = await request("paper/orders", pending, owner, "margin-limit-fill");
+  bid = 97;
+  ask = 98;
+  assert.equal((await paperTick()).failures, 0);
+  const a = (await request("paper/account")).data;
+  assert.equal(a.orders.find((o) => o.id === r.data.id).status, "filled");
+  assert.ok(Math.abs(+a.account.balance - 9960.604) < 1e-8);
+  assert.equal(a.reserved, 0);
+});
+test("leveraged long and short margin exhaustion closes without spending free cash or another position's margin", async () => {
+  for (const direction of ["LONG", "SHORT"]) {
+    await query("DELETE FROM paper_orders");
+    await query("UPDATE paper_accounts SET balance=10000");
+    const r = await request(
+      "paper/orders",
+      order({ market: "perpetual", leverage: 10, direction }),
+      owner,
+      "liquidation-" + direction,
+    );
+    const other = await request(
+      "paper/orders",
+      order({ quantity: 1 }),
+      owner,
+      "other-margin-" + direction,
+    );
+    const balance = +(await request("paper/account")).data.account.balance;
+    if (direction === "LONG") {
+      bid = 80;
+      ask = 81;
+    } else {
+      bid = 130;
+      ask = 131;
+    }
+    assert.equal((await paperTick()).failures, 0);
+    const a = (await request("paper/account")).data,
+      o = a.orders.find((o) => o.id === r.data.id);
+    assert.equal(o.status, "closed");
+    assert.equal(o.close_reason, "liquidation");
+    assert.equal(o.collateral_exhausted, true);
+    assert.equal(+a.account.balance, balance);
+    assert.equal(a.orders.find((o) => o.id === other.data.id).status, "filled");
+    bid = 100;
+    ask = 101;
+  }
+});
+test("spot leverage and invalid leverage values are rejected before creating any order", async () => {
+  for (const extra of [
+    { leverage: 2 },
+    { market: "perpetual", leverage: 0 },
+    { market: "perpetual", leverage: 21 },
+    { market: "perpetual", leverage: 1.5 },
+  ])
+    assert.equal(
+      (
+        await request(
+          "paper/orders",
+          order(extra),
+          owner,
+          "invalid-leverage-" + JSON.stringify(extra),
+        )
+      ).status,
+      400,
+    );
+  assert.equal((await request("paper/account")).data.orders.length, 0);
+});
+test("concurrent leveraged entries cannot reserve the same available margin twice", async () => {
+  const results = await Promise.all([
+    request(
+      "paper/orders",
+      order({ market: "perpetual", leverage: 10, quantity: 600 }),
+      owner,
+      "concurrent-margin-a",
+    ),
+    request(
+      "paper/orders",
+      order({ market: "perpetual", leverage: 10, quantity: 600 }),
+      owner,
+      "concurrent-margin-b",
+    ),
+  ]);
+  assert.equal(results.filter((r) => r.status === 200).length, 1);
+  const a = (await request("paper/account")).data;
+  assert.equal(a.orders.length, 1);
+  assert.ok(Math.abs(+a.account.balance - 3879.4) < 1e-8);
+  const migration = await readFile(
+    new URL("../db/008_paper_leverage.sql", import.meta.url),
+    "utf8",
+  );
+  await (await db()).exec(migration);
+  await (await db()).exec(migration);
+  assert.equal((await request("paper/account")).data.orders[0].leverage, 10);
+});
 
 test("reapplying the paper migration preserves partial exits and backfills legacy trades once", async () => {
   const entry = await request(

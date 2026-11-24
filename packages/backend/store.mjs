@@ -60,6 +60,7 @@ export async function db() {
         "005_admin.sql",
         "006_paper_trading.sql",
         "007_mobile_login.sql",
+        "008_paper_leverage.sql",
       ]) {
         const migration = await readFile(
           resolve(projectRoot(), "db", file),

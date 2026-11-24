@@ -71,8 +71,9 @@ route('/push','post',O({'endpoint':S(format='uri',maxLength=2000),'keys':O({'p25
 route('/journal','post',R('Journal'),R('JsonRecord'));route('/journal-review','post',O(ai,[k for k in ai if k!='agentId']),R('JsonRecord'))
 route('/attachments','post',O({'journalId':uuid,'mimeType':S(enum=['image/png','image/jpeg']),'base64':S(maxLength=2700000)},['journalId','mimeType','base64']),R('JsonRecord'));route('/attachments/{id}','get',binary='image/png',response={'type':'string','format':'binary'});route('/attachments/{id}','delete')
 route('/paper/account','get',response=R('JsonRecord'))
-route('/paper/orders','post',O(ip|{'direction':S(enum=['LONG','SHORT']),'quantity':N(minimum=1e-8,maximum=1000000),'orderType':S(enum=['market','limit'],default='market'),'limitPrice':positive,'stopLoss':{'type':['number','null'],'exclusiveMinimum':0},'takeProfit':{'type':['number','null'],'exclusiveMinimum':0}},['direction','quantity']),R('JsonRecord'),idempotent=True)
+route('/paper/orders','post',O(ip|{'direction':S(enum=['LONG','SHORT']),'quantity':N(minimum=1e-8,maximum=1000000),'leverage':I(minimum=1,maximum=20,default=1),'orderType':S(enum=['market','limit'],default='market'),'limitPrice':positive,'stopLoss':{'type':['number','null'],'exclusiveMinimum':0},'takeProfit':{'type':['number','null'],'exclusiveMinimum':0}},['direction','quantity']),R('JsonRecord'),idempotent=True)
 paths['/paper/orders']['post']['requestBody']['content']['application/json']['schema']['allOf']=[{'if':{'properties':{'orderType':{'const':'limit'}},'required':['orderType']},'then':{'required':['limitPrice']}}]
+paths['/paper/orders']['post']['requestBody']['content']['application/json']['schema']['allOf'].append({'if':{'properties':{'market':{'const':'spot'}}},'then':{'properties':{'leverage':{'const':1}}}})
 route('/paper-close/{id}','post',O({'quantity':N(minimum=1e-8)}),R('JsonRecord'))
 paths['/paper-close/{id}']['post']['parameters'].append({'name':'idempotency-key','in':'header','required':False,'schema':S(minLength=8,maxLength=150),'description':'Required for partial closes; strongly recommended for all closes.'})
 route('/paper-cancel/{id}','post',O({}),R('JsonRecord'))

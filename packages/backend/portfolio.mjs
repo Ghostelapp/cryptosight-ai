@@ -2,6 +2,7 @@ import { query } from "./store.mjs";
 import { tickers } from "../market/providers.mjs";
 import { settlePaperPosition } from "../quant/research.mjs";
 import { cached } from "./cache.mjs";
+import { paperLiquidationPrice } from "../quant/paper-model.mjs";
 export async function paperOverview(userId) {
   const account = (
       await query("SELECT * FROM paper_accounts WHERE user_id=$1", [userId])
@@ -34,7 +35,7 @@ export async function paperOverview(userId) {
     const p = prices[o.venue + ":" + o.market]?.find(
       (t) => t.symbol === o.symbol,
     )?.price;
-    const collateral = +o.quantity * +o.fill_price;
+    const collateral = (+o.quantity * +o.fill_price) / +o.leverage;
     equity += collateral;
     if (p == null) complete = false;
     const pnl =
@@ -46,6 +47,7 @@ export async function paperOverview(userId) {
             exit: p,
             quantity: +o.quantity,
             entryFees: +o.fees,
+            leverage: +o.leverage,
           }).pnl;
     if (pnl != null) equity += pnl + +o.fees;
     return {
@@ -54,6 +56,12 @@ export async function paperOverview(userId) {
       direction: o.direction,
       quantity: +o.quantity,
       collateral,
+      leverage: +o.leverage,
+      liquidationPrice: paperLiquidationPrice(
+        +o.fill_price,
+        o.direction,
+        +o.leverage,
+      ),
       mark: p ?? null,
       unrealizedPnl: pnl,
       notional: p == null ? null : p * +o.quantity,
