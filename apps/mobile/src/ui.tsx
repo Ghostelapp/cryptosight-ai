@@ -212,7 +212,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     </Card>
   );
 }
-export function useRemote<T>(path: string, enabled = true, interval = 0) {
+export function useRemote<T>(
+  path: string,
+  enabled = true,
+  interval = 0,
+  pollWhile?: (data: T) => boolean,
+) {
   const { api, active, demo, t } = useMobile();
   const [data, setData] = useState<T | null>(null),
     [error, setError] = useState(""),
@@ -220,14 +225,22 @@ export function useRemote<T>(path: string, enabled = true, interval = 0) {
     [updatedAt, setUpdatedAt] = useState(0);
   const epoch = useRef(0),
     requestId = useRef(0);
+  const inFlight = useRef(0),
+    lastResult = useRef<T | null>(null),
+    pollCondition = useRef(pollWhile);
+  useEffect(() => {
+    pollCondition.current = pollWhile;
+  }, [pollWhile]);
   const refetch = useCallback(async () => {
     if (!enabled || !active || demo) return;
     const version = epoch.current,
       ticket = ++requestId.current;
+    inFlight.current++;
     setLoading(true);
     try {
       const result = await api.request(path);
       if (version === epoch.current && ticket === requestId.current) {
+        lastResult.current = result;
         setData(result);
         setUpdatedAt(Date.now());
         setError("");
@@ -236,12 +249,14 @@ export function useRemote<T>(path: string, enabled = true, interval = 0) {
       if (version === epoch.current && ticket === requestId.current)
         setError(errorText(t, e));
     } finally {
+      inFlight.current--;
       if (version === epoch.current && ticket === requestId.current)
         setLoading(false);
     }
   }, [enabled, active, demo, api, path, t]);
   useEffect(() => {
     const version = ++epoch.current;
+    lastResult.current = null;
     queueMicrotask(() => {
       if (version !== epoch.current) return;
       setData(null);
@@ -252,7 +267,15 @@ export function useRemote<T>(path: string, enabled = true, interval = 0) {
     });
     const timer =
       interval && active && enabled && !demo
-        ? setInterval(() => void refetch(), interval)
+        ? setInterval(() => {
+            if (
+              !inFlight.current &&
+              (!pollCondition.current ||
+                !lastResult.current ||
+                pollCondition.current(lastResult.current))
+            )
+              void refetch();
+          }, interval)
         : undefined;
     return () => {
       epoch.current = version + 1;

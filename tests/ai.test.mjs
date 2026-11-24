@@ -172,3 +172,46 @@ test("analysis retries invalid output once and never publishes invalid JSON", as
     globalThis.fetch = previous;
   }
 });
+
+test("semantic validation checks trigger/zone tick precision and contradictory NO_TRADE", () => {
+  const long = {
+    direction: "LONG",
+    trigger: { type: "price_touch", price: 100, timeframe: "1h" },
+    entry: { type: "limit", price: 100, zone: [99, 101] },
+    stop_loss: 90,
+    take_profits: [{ price: 120, size_pct: 100, probability: 50 }],
+    risk_reward: 2,
+    invalidation: "Below 90",
+    timing: "Touch entry",
+    reasoning: "Structure",
+    time_horizon: "intraday",
+  };
+  const ticked = { ...snap, instrument: { tickSize: 1 } };
+  assert.throws(
+    () =>
+      validateAnalysis(
+        {
+          ...result,
+          setups: [{ ...long, entry: { ...long.entry, zone: [99.5, 101] } }],
+        },
+        ticked,
+      ),
+    /invalid_tick_precision/,
+  );
+  assert.throws(
+    () =>
+      validateAnalysis(
+        {
+          ...result,
+          setups: [{ ...long, trigger: { ...long.trigger, price: 100.5 } }],
+        },
+        ticked,
+      ),
+    /invalid_tick_precision/,
+  );
+  assert.throws(
+    () =>
+      validateAnalysis({ ...result, setups: [result.setups[0], long] }, ticked),
+    /contradictory_ai_setups/,
+  );
+});

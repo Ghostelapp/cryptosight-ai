@@ -2197,3 +2197,10 @@ kbd {
     font-size: 16px;
   }
 }
+/* Evidence from the server is separate from the model's subjective confidence. */
+.research-evidence { margin: 16px 0; padding: 14px; border: 1px solid var(--line, #243443); border-radius: 12px; }
+.evidence-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 10px; margin: 10px 0; }
+.evidence-block { padding: 10px; border: 1px solid var(--line, #243443); border-radius: 8px; min-width: 0; }
+.evidence-block dl { display: grid; grid-template-columns: 1fr auto; gap: 5px 8px; font-size: 12px; }
+.evidence-block dd { margin: 0; font-variant-numeric: tabular-nums; }
+.evidence-block p, .research-evidence > p { font-size: 12px; overflow-wrap: anywhere; }

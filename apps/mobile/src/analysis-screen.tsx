@@ -26,9 +26,14 @@ function Research() {
   const [agentId, setAgent] = useState(""),
     [provider, setProvider] = useState("openai"),
     [model, setModel] = useState(""),
-    [mode, setMode] = useState("quick"),
+    [mode, setMode] = useState("deep"),
     [jobId, setJob] = useState("");
-  const job = useRemote<any>("analyses/" + jobId, !!jobId, 4000);
+  const job = useRemote<any>(
+    "analyses/" + jobId,
+    !!jobId,
+    4000,
+    (data) => !["completed", "failed"].includes(data.status),
+  );
   const catalog = useRemote<{
     provider: string;
     models: { id: string; name: string }[];
@@ -170,6 +175,66 @@ function Research() {
           )}
           {result && (
             <>
+              {!!job.data.research && (
+                <Card>
+                  <Heading>
+                    {t("researchEvidence")} ·{" "}
+                    {t(
+                      job.data.research.status === "complete"
+                        ? "qualityComplete"
+                        : "qualityPartial",
+                    )}
+                  </Heading>
+                  <Label muted>{t("evidenceHint")}</Label>
+                  {job.data.research.frames?.map((frame: any) => (
+                    <Card key={frame.timeframe}>
+                      <Label>
+                        {frame.timeframe} · {t("research_" + frame.trend)}
+                      </Label>
+                      <Label muted>
+                        {t("closedBars")}: {frame.closedBars} ·{" "}
+                        {t("candleGaps")}: {frame.gaps}
+                      </Label>
+                      <Label>
+                        RSI: {number(locale, frame.rsi)} · ATR %:{" "}
+                        {number(locale, frame.atrPct)} · {t("relativeVolume")}:{" "}
+                        {number(locale, frame.volumeRatio20)}×
+                      </Label>
+                    </Card>
+                  ))}
+                  <Label>
+                    {t("spread")}:{" "}
+                    {number(locale, job.data.research.execution?.spreadBps)} bps
+                  </Label>
+                  <Label>
+                    {t("btcCorrelation")}:{" "}
+                    {number(locale, job.data.research.benchmark?.value)}
+                  </Label>
+                  {!!job.data.research.missingSources?.length && (
+                    <Notice>
+                      {t("missingSources")}:{" "}
+                      {job.data.research.missingSources.join(", ")}
+                    </Notice>
+                  )}
+                  {job.data.trade_metrics?.map((metric: any, index: number) => (
+                    <Card key={index}>
+                      <Label>
+                        {metric.direction} · {t("netRiskReward")}:{" "}
+                        {number(locale, metric.netRR)}
+                      </Label>
+                      <Label>
+                        {t("breakEvenRate")}:{" "}
+                        {number(locale, metric.breakEvenWinRatePct)}%
+                      </Label>
+                      <Label muted>
+                        {t("assumedCosts")}:{" "}
+                        {number(locale, metric.assumedRoundTripCostBps)} bps
+                      </Label>
+                    </Card>
+                  ))}
+                  <Label muted>{t("costAssumptionsHint")}</Label>
+                </Card>
+              )}
               <Label>{result.summary_short}</Label>
               <Label muted>{result.summary_detailed}</Label>
               <Label>

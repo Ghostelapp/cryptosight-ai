@@ -4,6 +4,8 @@ A full-stack crypto analysis terminal built with Next.js, React, TypeScript, KLi
 
 The source and production build are delivered. This is a release candidate requiring operator configuration and staging verification before public use. Local unit/integration tests, desktop/mobile browser flows and production HTTP smoke checks have been executed; external-service limitations remain documented in [validation](docs/VALIDATION.md).
 
+Analysis engine v2 adds adaptive multi-timeframe deep research, independent evidence/data-quality reports, order-book context, BTC return correlation and risk/reward after explicit cost assumptions. See [ANALYSIS-ENGINE.md](docs/ANALYSIS-ENGINE.md) for calculations, validation and limits.
+
 The 2026-11-14 integrated update combines advanced paper trading, mobile chart fixes and terminal productivity tools, with patched dependencies and gateway accounting. See [INTEGRATION-REVIEW.md](docs/INTEGRATION-REVIEW.md) for source revisions, data preservation and current validation.
 
 ## Local development

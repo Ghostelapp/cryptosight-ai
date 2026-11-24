@@ -46,6 +46,7 @@ import { storeCandles } from "./market-storage.mjs";
 import { positionSize, correlation } from "../quant/research.mjs";
 import { snapshot, llm, providers } from "../ai/agent.mjs";
 import { listModels } from "../ai/models.mjs";
+import { setupMetrics } from "../quant/evidence.mjs";
 import { queueAnalysis, credential, estimate, withAIBudget } from "./jobs.mjs";
 import { cached, redisClient } from "./cache.mjs";
 import { email, news } from "./notifications.mjs";
@@ -739,11 +740,12 @@ export async function handle(req) {
       if (id) {
         const r = (
           await take(
-            "SELECT id,status,result,snapshot_id,error_code,cost_usd,created_at,request_config FROM analyses WHERE id=$1 AND user_id=$2",
+            "SELECT a.id,a.status,a.result,a.snapshot_id,a.error_code,a.cost_usd,a.created_at,a.request_config,s.data->'research' AS research FROM analyses a LEFT JOIN market_snapshots s ON s.id=a.snapshot_id WHERE a.id=$1 AND a.user_id=$2",
             [id, uid],
           )
         )[0];
         if (!r) throw new Error("not_found");
+        r.trade_metrics = setupMetrics(r.result, r.research);
         return json(r);
       }
       return json(

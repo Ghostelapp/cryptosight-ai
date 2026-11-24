@@ -1,8 +1,8 @@
 {
   "name": "CryptoSight AI",
-  "version": "1.5.0-rc.1",
+  "version": "1.6.0-rc.1",
   "validation": {
-    "unit_integration_passed": 85,
+    "unit_integration_passed": 104,
     "live_tests_skipped": 3,
     "strict_typescript": "passed",
     "production_build": "passed",
@@ -12,28 +12,30 @@
     "synthetic_gateway_symbols": 51,
     "synthetic_transport_p95_ms": 1,
     "production_wallet_http_flow": "passed",
-    "browser_scenarios_discovered": 20,
-    "mobile_browser_execution": "passed: Chromium desktop/mobile flows and screenshots",
+    "browser_scenarios_discovered": 22,
+    "mobile_browser_execution": "22 Chromium scenarios verified across runs; two resource-contention failures passed in four-scenario rerun",
     "production_admin_http_flow": "passed",
     "workflow_static_validation": "passed: actionlint 1.7.12",
     "gateway_handshake_limits": "passed",
     "repeated_paper_migration": "passed",
-    "remote_ci": "native branch not verified: GitHub API TLS handshake timeout; earlier main runs blocked by account billing",
+    "remote_ci": "not used for this validation; previous verified runs blocked by GitHub account billing",
     "native_typescript": "passed",
     "native_lint": "passed",
     "native_hermes_export": "passed: Android and iOS",
     "native_react_isolation": "Hermes contains React 19.3.0; React 19.3.1 and backend source absent",
     "expo_doctor": "19/20: intentional isolated web/native React versions",
     "android_native_build": "passed: arm64-v8a/x86_64 APK, development signature verified, installed and launched on Android emulator",
-    "android_native_ui": "passed: welcome screen and sample-market candlestick/EMA chart visually inspected; device browser pairing not exercised"
+    "android_native_ui": "passed: welcome screen and sample-market candlestick/EMA chart visually inspected; device browser pairing not exercised",
+    "vps_compose_and_restore": "passed: initial deployment, seven migrations, isolated restore, runtime DB/Redis/worker/WSS",
+    "analysis_engine": "passed: closed-bar evidence, adaptive frames, optional feeds, costs, tenant projection"
   },
   "unverified": [
     "live exchange access and end-to-end latency",
-    "Docker/PostgreSQL/Redis deployment and restore",
     "credential-dependent external integrations",
     "GitHub-hosted native branch CI execution: API TLS timeout; earlier main blocked by account billing",
     "iOS native compilation, signing and real-device biometrics",
-    "on-device browser pairing and private native screens"
+    "on-device browser pairing and private native screens",
+    "independent off-server backup delivery and long-running load/availability"
   ],
   "automatic_exchange_execution": false,
   "wallet_auth": {
@@ -70,7 +72,7 @@
     "automatic_execution": "persistent worker required; 5-second sampling",
     "leverage": 1
   },
-  "validated_at": "2026-11-16",
+  "validated_at": "2026-11-24",
   "integrated_sources": {
     "main": "bd3c9e476ec3b8eac689510ad2306eb6fe54a202",
     "terminal": "67f82f5ef138b692c47bdef2312066cd0aa80148",
@@ -104,5 +106,18 @@
       "sha256": "cecebc70b2be8f609f2a1e6a897603153504e78441315ed45fe0850ce1a19f10",
       "signing": "generated development key; not a store release"
     }
+  },
+  "analysis_engine": {
+    "version": 2,
+    "prompt_version": "crypto-analyst-v2",
+    "default_mode": "deep",
+    "adaptive_timeframes": true,
+    "closed_candle_evidence": true,
+    "optional_feed_wait_budget_ms": 8000,
+    "btc_return_correlation": true,
+    "explicit_net_risk_reward": true,
+    "deep_max_output_tokens": 8000,
+    "max_generation_attempts": 2,
+    "accuracy_backtested": false
   }
 }

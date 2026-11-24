@@ -1,5 +1,6 @@
 "use client";
 import { ModelPicker } from "./model-picker";
+import { ResearchEvidence } from "./research-evidence";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { PaperPanel } from "./paper-panel";
@@ -211,8 +212,9 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
   const [provider, setProvider] = useState("openai"),
     [model, setModel] = useState(""),
     [modelCatalogRevision, setModelCatalogRevision] = useState(0),
-    [mode, setMode] = useState("quick"),
+    [mode, setMode] = useState("deep"),
     [analysis, setAnalysis] = useState<any>(null),
+    [analysisEvidence, setAnalysisEvidence] = useState<any>(null),
     [analysisId, setAnalysisId] = useState(""),
     [analysisStatus, setAnalysisStatus] = useState(""),
     [showOverlay, setShowOverlay] = useState(true),
@@ -631,33 +633,35 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
   }, [tab, user?.id]);
   useEffect(() => {
     if (!analysisId) return;
-    let stopped = false;
+    let stopped = false, finished = false, failures = 0;
     const poll = async () => {
       try {
         const r = await api("analyses/" + analysisId);
         if (stopped) return;
+        failures = 0;
         setAnalysisStatus(r.status);
         if (r.status === "completed") {
+          finished = true;
           setAnalysis(r.result);
+          setAnalysisEvidence({research:r.research,metrics:r.trade_metrics || []});
           setEntry(r.result.setups[0]?.entry?.price || "");
           setStop(r.result.setups[0]?.stop_loss || "");
-          clearInterval(analysisInterval.current);
         }
         if (r.status === "failed") {
+          finished = true;
           error(r.error_code || "analysis_failed");
-          clearInterval(analysisInterval.current);
         }
       } catch (e: any) {
-        error(e.message);
-        clearInterval(analysisInterval.current);
+        if (stopped) return;
+        failures++;
+        if (["authentication_required","account_suspended","not_found"].includes(e.message)) finished=true;
+        if (finished || failures === 3) error(e.message);
+      } finally {
+        if (!stopped && !finished) analysisInterval.current = setTimeout(poll, Math.min(15000,2000 * 2 ** Math.min(failures,3)));
       }
     };
-    poll();
-    analysisInterval.current = setInterval(poll, 2000);
-    return () => {
-      stopped = true;
-      clearInterval(analysisInterval.current);
-    };
+    void poll();
+    return () => { stopped = true; clearTimeout(analysisInterval.current); };
   }, [analysisId]);
   useEffect(() => {
     if (!backtestId) return;
@@ -689,15 +693,21 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     mode,
     indicatorPeriod: period,
   });
+  const analysisIntent = useRef<{ signature:string; key:string } | null>(null);
   const runAnalysis = () => {
     if (!protect()) return;
     perform("analysis", async () => {
+      const config = analysisConfig(), signature = JSON.stringify(config);
+      if (analysisIntent.current?.signature !== signature)
+        analysisIntent.current = {signature,key:crypto.randomUUID()};
       const r = await api("analyses", {
         method: "POST",
-        headers: { "idempotency-key": crypto.randomUUID() },
-        body: analysisConfig(),
+        headers: { "idempotency-key": analysisIntent.current.key },
+        body: config,
       });
+      analysisIntent.current = null;
       setAnalysis(null);
+      setAnalysisEvidence(null);
       setAnalysisId(r.id);
       setAnalysisStatus(r.status);
     });
@@ -1692,6 +1702,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                             <span>{date(analysis.timestamp)}</span>
                           </div>
                           <p className="summary">{analysis.summary_short}</p>
+                          <ResearchEvidence research={analysisEvidence?.research} metrics={analysisEvidence?.metrics} />
                           <div className="confidence">
                             <div>
                               <span>{t("confidence")}</span>

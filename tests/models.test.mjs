@@ -260,3 +260,44 @@ test("only administrators can discover models with a stored platform-agent key",
     404,
   );
 });
+
+test("analysis evidence projection remains tenant scoped and excludes the raw snapshot", async () => {
+  const ownerId = (
+    await query("SELECT id FROM users WHERE email='owner-models@example.com'")
+  ).rows[0].id;
+  const research = {
+    status: "partial",
+    frames: [],
+    execution: { available: true, spreadBps: 0 },
+  };
+  const snapshotId = (
+    await query(
+      "INSERT INTO market_snapshots(venue,market,symbol,timeframe,observed_at,snapshot_hash,data,schema_version) VALUES('binance','spot','BTCUSDT','1h',now(),$1,$2,1) RETURNING id",
+      [
+        randomUUID(),
+        JSON.stringify({ research, privateRaw: "not part of the response" }),
+      ],
+    )
+  ).rows[0].id;
+  const id = randomUUID();
+  const result = {
+    setups: [
+      {
+        direction: "LONG",
+        entry: { price: 100 },
+        stop_loss: 90,
+        take_profits: [{ price: 120, size_pct: 100 }],
+      },
+    ],
+  };
+  await query(
+    "INSERT INTO analyses(id,user_id,locale,provider,model,prompt_version,schema_version,status,result,snapshot_id,idempotency_key,mode,request_config,reservation_usd) VALUES($1,$2,'en','openai','fixture','fixture',1,'completed',$3,$4,$5,'deep','{}',0)",
+    [id, ownerId, JSON.stringify(result), snapshotId, "research-"+id],
+  );
+  const response = await request("analyses/" + id, { user: owner });
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.data.research, research);
+  assert.equal(response.data.trade_metrics[0].grossRR, 2);
+  assert.ok(!JSON.stringify(response.data).includes("privateRaw"));
+  assert.equal((await request("analyses/" + id, { user: other })).status, 404);
+});
