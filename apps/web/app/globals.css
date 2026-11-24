@@ -2288,3 +2288,79 @@ kbd {
 .ai-chart-guide > small { display: block; margin-top: 10px; color: var(--muted); }
 .ai-chart-guide details summary { cursor: pointer; }
 @media (max-width: 600px) { .ai-chart-guide { margin: 8px 0; padding: 10px; } .ai-chart-controls { gap: 10px; } }
+
+/* Shared compact feature pages; chart tools and dialogs retain their own sizes. */
+.feature-page { max-width:1320px; padding:20px 24px; min-width:0; }
+.feature-page .page-title { margin-bottom:18px; align-items:flex-start; gap:12px; }
+.feature-page .page-title h1 { font-size:23px; line-height:1.25; margin:0; letter-spacing:-.4px; }
+.feature-page .eyebrow { font-size:10px; margin-bottom:6px; letter-spacing:.1em; }
+.page-description { font-size:12px; color:var(--muted); line-height:1.6; margin:7px 0 0; max-width:680px; }
+.feature-page:not([data-page="paper"]) h2 { font-size:15px; margin:0 0 12px; font-weight:600; }
+.feature-page:not([data-page="paper"]) h3 { font-size:13px; margin:12px 0 8px; }
+.feature-page:not([data-page="paper"]) .form-card { padding:16px; margin-bottom:14px; border-radius:9px; min-width:0; }
+.feature-page:not([data-page="paper"]) .form-card p { font-size:12px; line-height:1.6; margin:9px 0; overflow-wrap:anywhere; }
+.feature-page:not([data-page="paper"]) .form-grid { gap:12px; margin-bottom:12px; align-items:end; }
+.feature-page:not([data-page="paper"]) .field { min-width:0; gap:5px; margin-bottom:0; }
+.feature-page:not([data-page="paper"]) .field > span { font-size:11px; }
+.feature-page:not([data-page="paper"]) .field input,.feature-page:not([data-page="paper"]) .field select { width:100%; min-height:36px; height:36px; padding:7px 9px; font-size:12px; border-radius:5px; }
+.feature-page:not([data-page="paper"]) .field textarea { min-height:72px; font-size:12px; padding:9px; }
+.feature-page:not([data-page="paper"]) .button { min-height:34px; font-size:11px; padding:7px 11px; border-radius:5px; }
+.feature-page:not([data-page="paper"]) .button svg { width:14px; height:14px; }
+.feature-page:not([data-page="paper"]) .stats-grid { grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr)); gap:10px; margin:12px 0 16px; }
+.feature-page:not([data-page="paper"]) .stat { padding:12px 14px; gap:7px; min-width:0; }
+.feature-page:not([data-page="paper"]) .stat > span { font-size:11px; }
+.feature-page:not([data-page="paper"]) .stat strong { font-size:20px; line-height:1.2; overflow-wrap:anywhere; }
+.feature-page:not([data-page="paper"]) .table-scroll { margin:12px 0 16px; max-width:100%; }
+.feature-page:not([data-page="paper"]) table { font-size:12px; }
+.feature-page:not([data-page="paper"]) th,.feature-page:not([data-page="paper"]) td { padding:10px 12px; }
+.feature-page:not([data-page="paper"]) th { font-size:10px; }
+.feature-page:not([data-page="paper"]) td { overflow-wrap:anywhere; }
+.feature-page:not([data-page="paper"]) .form-row { gap:10px; margin-bottom:14px; }
+.feature-page:not([data-page="paper"]) .checks { gap:10px; margin:12px 0; font-size:12px; }
+.feature-page:not([data-page="paper"]) .event-notice { font-size:11px; padding:10px 12px; line-height:1.6; margin:12px 0; }
+.feature-page .heatmap { gap:7px; margin:10px 0; }
+.feature-page .heatmap button { min-height:64px; padding:12px; gap:8px; }
+.feature-page .heatmap strong { font-size:13px; }
+.feature-more { font-size:11px; margin:2px 0 12px; }
+.feature-page .journal-curve { margin:12px 0; padding:10px; }
+.feature-page .journal-curve svg { max-height:140px; }
+.feature-page .journal-insights > .stats-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.feature-page .journal-insights .insights-heading { margin-bottom:8px; }
+.feature-page .feature-disclosure > summary { cursor:pointer; font-size:12px; font-weight:600; color:var(--text); }
+.feature-disclosure > summary::marker,.feature-options > summary::marker { color:var(--muted); }
+.feature-disclosure[open] > summary { padding-bottom:12px; margin-bottom:12px; border-bottom:1px solid var(--line); }
+.feature-disclosure .disclosure-body { min-width:0; }
+.feature-options { margin:10px 0 14px; font-size:12px; }
+.feature-options > summary { cursor:pointer; color:var(--muted); font-size:11px; padding:6px 0; }
+.feature-options[open] > .form-grid { margin-top:10px; }
+.page-tabs { display:flex; gap:16px; overflow-x:auto; border-bottom:1px solid var(--line); margin:0 0 16px; }
+.page-tabs > button { border-bottom:2px solid transparent; padding:10px 2px; color:var(--muted); font-size:12px; white-space:nowrap; flex-shrink:0; }
+.page-tabs > button[aria-selected="true"] { color:var(--text); border-color:var(--cyan); }
+.page-tabs-panel { min-width:0; }
+.page-tabs-panel[hidden] { display:none; }
+.feature-page[data-page="settings"] .page-tabs-panel > .form-card,.feature-page[data-page="settings"] .wallet-access { max-width:900px; }
+.feature-page .admin-agent-grid { gap:14px; }
+.feature-page .candidate-scanner > .form-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.feature-empty { font-size:12px; color:var(--muted); text-align:center; padding:30px 12px; border:1px dashed var(--line); border-radius:8px; }
+.feature-page:not([data-page="paper"]) .feature-table-empty { text-align:center; color:var(--muted); padding:28px 12px; }
+.feature-page:not([data-page="paper"]) .journal-insights > .stats-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+@media(max-width:850px) {
+  .feature-page { padding:16px; }
+  .feature-page .page-title h1 { font-size:21px; }
+  .feature-page:not([data-page="paper"]) .stats-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .feature-page:not([data-page="paper"]) .field input,.feature-page:not([data-page="paper"]) .field select { font-size:16px; min-height:40px; height:40px; }
+  .feature-page:not([data-page="paper"]) .button,.page-tabs > button { min-height:40px; }
+  .feature-page .candidate-scanner > .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .feature-page .journal-insights > .stats-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .feature-page .journal-insights .stat { padding:10px; }
+  .feature-page .journal-insights .stat strong { font-size:17px; }
+  .page-tabs { gap:14px; }
+}
+@media(max-width:480px) {
+  .feature-page { padding:12px; }
+  .feature-page:not([data-page="paper"]) .form-card { padding:12px; }
+  .feature-page .heatmap { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .feature-page .journal-insights .stat > span { font-size:10px; }
+  .feature-page .journal-insights .stat strong { font-size:15px; }
+  .feature-page .page-title > .button { flex-shrink:0; }
+}

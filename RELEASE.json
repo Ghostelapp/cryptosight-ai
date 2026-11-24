@@ -1,6 +1,6 @@
 {
   "name": "CryptoSight AI",
-  "version": "1.7.0-rc.1",
+  "version": "1.7.1-rc.1",
   "validation": {
     "unit_integration_passed": 124,
     "live_tests_skipped": 3,
@@ -12,8 +12,8 @@
     "synthetic_gateway_symbols": 51,
     "synthetic_transport_p95_ms": 1,
     "production_wallet_http_flow": "passed",
-    "browser_scenarios_discovered": 25,
-    "mobile_browser_execution": "22 Chromium scenarios verified across runs; two resource-contention failures passed in four-scenario rerun",
+    "browser_scenarios_discovered": 26,
+    "mobile_browser_execution": "26 Chromium scenarios; compact pages checked at 320px with desktop/mobile, light-theme and Polish screenshots",
     "production_admin_http_flow": "passed",
     "workflow_static_validation": "passed: actionlint 1.7.12",
     "gateway_handshake_limits": "passed",
@@ -31,7 +31,8 @@
     "android_https_preview": "passed: arm64-v8a/x86_64 build, signature and embedded HTTPS backend/research/model-picker content verified",
     "candidate_scanner": "passed: seven strategy/orchestration tests, authentication/input bounds, candidate/watch/empty/chart UI and real VPS read-only scan",
     "ai_chart": "passed: selected scenario, price anchors/label packing, schema notes and scale; NO_TRADE actual canvas text and mobile screenshots verified with/without context levels",
-    "paper_leverage": "passed: margin/fees, partial exits, limit refunds/fills, exhaustion on both sides, concurrent reservations, migration replay and compact desktop/mobile browser flow"
+    "paper_leverage": "passed: margin/fees, partial exits, limit refunds/fills, exhaustion on both sides, concurrent reservations, migration replay and compact desktop/mobile browser flow",
+    "compact_pages": "settings/screener/alert tabs, expandable secondary forms, keyboard navigation, input preservation, page/account-scoped records and compact admin editor"
   },
   "unverified": [
     "live exchange access and end-to-end latency",

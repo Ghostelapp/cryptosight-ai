@@ -1,4 +1,5 @@
 "use client";
+import { PageTabs, DisclosureCard } from "./page-sections";
 import { ModelPicker } from "./model-picker";
 import { ResearchEvidence } from "./research-evidence";
 import { CandidateScanner } from "./candidate-scanner";
@@ -146,15 +147,9 @@ function NumberInput({ value, set, min = 0, step = "any" }: any) {
     />
   );
 }
-function Empty({ t, login = false }: any) {
-  return (
-    <div className="empty-state">
-      <Activity size={25} />
-      <p>{t(login ? "loginRequired" : "empty")}</p>
-    </div>
-  );
-}
 export function Terminal({ locale, setLocale, theme, setTheme }: any) {
+  const [expandedMovers, setExpandedMovers] = useState(false);
+  const [alertSection, setAlertSection] = useState(0);
   const t = useTranslations(),
     [tab, setTab] = useState("terminal"),
     [user, setUser] = useState<any>(null),
@@ -237,7 +232,11 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     [direction, setDirection] = useState("LONG"),
     [sizeResult, setSizeResult] = useState<any>(null),
     [riskOpen, setRiskOpen] = useState(false);
-  const [records, setRecords] = useState<any[]>([]),
+  const [recordState, setRecordState] = useState<{
+      tab: string;
+      userId: string;
+      rows: any[];
+    }>({ tab: "", userId: "", rows: [] }),
     [scanner, setScanner] = useState<any[]>([]),
     [brief, setBrief] = useState<any>(null),
     [correlations, setCorrelations] = useState<any[]>([]),
@@ -279,6 +278,12 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     [totpSecret, setTotpSecret] = useState<any>(null),
     [usage, setUsage] = useState<any>(null),
     [deleteOpen, setDeleteOpen] = useState(false);
+  const records =
+    recordState.tab === tab && recordState.userId === user?.id
+      ? recordState.rows
+      : [];
+  const setRecords = (rows: any[]) =>
+    setRecordState({ tab, userId: user?.id ?? "", rows });
   const chartRef = useRef<any>(null),
     analysisInterval = useRef<any>(null);
   const applyWorkspace = (value: unknown) => {
@@ -396,16 +401,6 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
       setUser(r.user);
       setConfiguration(r.configuration);
       setCsrf(r.csrfToken);
-      if (r.user) {
-        const agents = await api("agents");
-        setManagedAgents(agents);
-        setAgentId((current) =>
-          agents.some((agent: any) => agent.id === current) ? current : "",
-        );
-      } else {
-        setManagedAgents([]);
-        setAgentId("");
-      }
       if (r.user?.role !== "admin")
         setTab((current) => (current === "admin" ? "terminal" : current));
       if (r.user) {
@@ -422,6 +417,18 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               location.replace("/mobile/connect?request=" + requestId);
           } catch {}
         }
+      }
+      // Hydrate preferences with the account, before auxiliary requests can
+      // complete after the user has already started editing settings.
+      if (r.user) {
+        const agents = await api("agents");
+        setManagedAgents(agents);
+        setAgentId((current) =>
+          agents.some((agent: any) => agent.id === current) ? current : "",
+        );
+      } else {
+        setManagedAgents([]);
+        setAgentId("");
       }
     } catch (e: any) {
       error(e.message);
@@ -1006,6 +1013,13 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
           </tr>
         </thead>
         <tbody>
+          {!rows.length && (
+            <tr>
+              <td colSpan={headers.length} className="feature-table-empty">
+                {t("pageNoRecords")}
+              </td>
+            </tr>
+          )}
           {rows.map((row, i) => (
             <tr key={i}>
               {row.map((cell, j) => (
@@ -1015,7 +1029,6 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
           ))}
         </tbody>
       </table>
-      {!rows.length && <Empty t={t} />}
     </div>
   );
   const navigationItems = [
@@ -1108,6 +1121,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
             className="icon-button"
             onClick={() => {
               setTab("alerts");
+              setAlertSection(2);
               setMobileNav(false);
             }}
             title={t("notifications")}
@@ -1950,20 +1964,25 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               </div>
             </div>
           ) : (
-            <section className="feature-page">
-              <div className="page-title">
-                <div>
-                  <span className="eyebrow">CryptoSight AI</span>
-                  <h1>{t(tab)}</h1>
+            <section className="feature-page" data-page={tab}>
+              {tab !== "admin" && (
+                <div className="page-title">
+                  <div>
+                    <span className="eyebrow">CryptoSight AI</span>
+                    <h1>{t(tab)}</h1>
+                    {t.has("pageHint_" + tab) && (
+                      <p className="page-description">{t("pageHint_" + tab)}</p>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => perform("refresh", refreshRecords)}
+                  >
+                    <RefreshCw size={16} />
+                    {t("retry")}
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={() => perform("refresh", refreshRecords)}
-                >
-                  <RefreshCw size={16} />
-                  {t("retry")}
-                </Button>
-              </div>
+              )}
               {tab === "admin" && user?.role === "admin" && (
                 <AdminPanel api={api} user={user} onChanged={loadMe} />
               )}
@@ -1987,8 +2006,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                       compact(tickers.reduce((s, x) => s + x.volume, 0)),
                     )}
                   </div>
-                  <div className="form-card">
-                    <h2>{t("brief")}</h2>
+                  <DisclosureCard title={t("brief")}>
                     <p className="muted">{t("briefHint")}</p>
                     <div className="form-grid">
                       {providerControls}
@@ -2020,13 +2038,13 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                     ) : brief ? (
                       <p>{t(brief.status)}</p>
                     ) : null}
-                  </div>
+                  </DisclosureCard>
                   <h2>{t("topMovers")}</h2>
                   <div className="heatmap">
                     {[...tickers]
                       .filter((x) => x.volume > 1000000)
                       .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
-                      .slice(0, 24)
+                      .slice(0, expandedMovers ? 24 : 12)
                       .map((x) => (
                         <button
                           style={{
@@ -2050,37 +2068,52 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                         </button>
                       ))}
                   </div>
-                  <div className="event-notice">{t("eventWarning")}</div>
-                  <h2>{t("correlation")}</h2>
-                  <Button
-                    onClick={() => {
-                      if (!protect()) return;
-                      perform("correlation", async () =>
-                        setCorrelations(
-                          await api(
-                            "correlation?symbols=" +
-                              watchlist.slice(0, 8).join(",") +
-                              "&venue=" +
-                              instrument.venue,
-                          ),
-                        ),
-                      );
-                    }}
+                  <button
+                    className="text-button feature-more"
+                    onClick={() => setExpandedMovers((v) => !v)}
                   >
-                    {t("calculate")}
-                  </Button>
-                  {correlations.length > 0 &&
-                    table(
-                      [t("symbol"), ...correlations.map((r) => r.symbol)],
-                      correlations.map((r) => [
-                        r.symbol,
-                        ...r.values.map((v: any) => fmt(v.value)),
-                      ]),
-                    )}
+                    {t(expandedMovers ? "pageShowLess" : "pageShowMore")}
+                  </button>
+                  <div className="event-notice">{t("eventWarning")}</div>
+                  <DisclosureCard title={t("correlation")}>
+                    {" "}
+                    <Button
+                      onClick={() => {
+                        if (!protect()) return;
+                        perform("correlation", async () =>
+                          setCorrelations(
+                            await api(
+                              "correlation?symbols=" +
+                                watchlist.slice(0, 8).join(",") +
+                                "&venue=" +
+                                instrument.venue,
+                            ),
+                          ),
+                        );
+                      }}
+                    >
+                      {t("calculate")}
+                    </Button>
+                    {correlations.length > 0 &&
+                      table(
+                        [t("symbol"), ...correlations.map((r) => r.symbol)],
+                        correlations.map((r) => [
+                          r.symbol,
+                          ...r.values.map((v: any) => fmt(v.value)),
+                        ]),
+                      )}
+                  </DisclosureCard>
                 </>
               )}
               {tab === "screener" && (
-                <>
+                <PageTabs
+                  name={t("screener")}
+                  labels={[
+                    t("candidateScanner"),
+                    t("pageMarketList"),
+                    t("watchlistScans"),
+                  ]}
+                >
                   <CandidateScanner
                     instrument={instrument}
                     locale={locale}
@@ -2095,62 +2128,6 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                       setTab("terminal");
                     }}
                   />
-                  <h2>{t("watchlistScans")}</h2>
-                  <p className="muted">{t("watchlistScansHint")}</p>
-                  <div className="form-row">
-                    <Button
-                      onClick={() => {
-                        if (!protect()) return;
-                        perform("scanner", async () =>
-                          setScanner(await api("scanner")),
-                        );
-                      }}
-                    >
-                      {t("scan")}
-                    </Button>
-                  </div>
-                  <div className="form-grid">
-                    {providerControls}
-                    <Button
-                      onClick={() => {
-                        if (!protect()) return;
-                        perform("scanner", async () => {
-                          await api("scanner", {
-                            method: "POST",
-                            body: {
-                              ...aiConfig(),
-                              timeframe: instrument.timeframe,
-                            },
-                            headers: { "idempotency-key": crypto.randomUUID() },
-                          });
-                          setToast(t("scanQueued"));
-                        });
-                      }}
-                    >
-                      {t("aiScan")}
-                    </Button>
-                    <Button
-                      onClick={() =>
-                        perform("scanner", async () =>
-                          setScanner(await api("scanner?mode=ai")),
-                        )
-                      }
-                    >
-                      {t("scanResults")}
-                    </Button>
-                  </div>
-                  <p className="muted">{t("scoreHint")}</p>
-                  {scanner.length > 0 &&
-                    table(
-                      [t("symbol"), t("score"), t("direction"), "RSI", "ADX"],
-                      scanner.map((r) => [
-                        r.symbol,
-                        fmt(r.score),
-                        r.direction || "—",
-                        fmt(r.indicators?.RSI),
-                        fmt(r.indicators?.ADX?.adx),
-                      ]),
-                    )}
                   <MarketScreener
                     tickers={tickers}
                     watchlist={watchlist}
@@ -2161,7 +2138,67 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                       setTab("terminal");
                     }}
                   />
-                </>
+                  <div className="form-card">
+                    <h2>{t("watchlistScans")}</h2>
+                    <p className="muted">{t("watchlistScansHint")}</p>
+                    <div className="form-row">
+                      <Button
+                        onClick={() => {
+                          if (!protect()) return;
+                          perform("scanner", async () =>
+                            setScanner(await api("scanner")),
+                          );
+                        }}
+                      >
+                        {t("scan")}
+                      </Button>
+                    </div>
+                    <div className="form-grid">
+                      {providerControls}
+                      <Button
+                        onClick={() => {
+                          if (!protect()) return;
+                          perform("scanner", async () => {
+                            await api("scanner", {
+                              method: "POST",
+                              body: {
+                                ...aiConfig(),
+                                timeframe: instrument.timeframe,
+                              },
+                              headers: {
+                                "idempotency-key": crypto.randomUUID(),
+                              },
+                            });
+                            setToast(t("scanQueued"));
+                          });
+                        }}
+                      >
+                        {t("aiScan")}
+                      </Button>
+                      <Button
+                        onClick={() =>
+                          perform("scanner", async () =>
+                            setScanner(await api("scanner?mode=ai")),
+                          )
+                        }
+                      >
+                        {t("scanResults")}
+                      </Button>
+                    </div>
+                    <p className="muted">{t("scoreHint")}</p>
+                    {scanner.length > 0 &&
+                      table(
+                        [t("symbol"), t("score"), t("direction"), "RSI", "ADX"],
+                        scanner.map((r) => [
+                          r.symbol,
+                          fmt(r.score),
+                          r.direction || "—",
+                          fmt(r.indicators?.RSI),
+                          fmt(r.indicators?.ADX?.adx),
+                        ]),
+                      )}
+                  </div>
+                </PageTabs>
               )}
               {!user &&
               [
@@ -2182,159 +2219,173 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               ) : (
                 <>
                   {tab === "alerts" && (
-                    <>
-                      <div className="form-card">
-                        <h2>{t("alerts")}</h2>
-                        <div className="form-grid">
-                          <Field label={t("condition")}>
-                            <select
-                              value={alertKind}
-                              onChange={(e) => setAlertKind(e.target.value)}
-                            >
-                              {[
-                                "price",
-                                "indicator",
-                                "ai_signal",
-                                "drawing",
-                              ].map((k) => (
-                                <option key={k} value={k}>
-                                  {t(
-                                    k === "ai_signal"
-                                      ? "analysis"
-                                      : k === "drawing"
-                                        ? "drawings"
-                                        : k,
-                                  )}
-                                </option>
-                              ))}
-                            </select>
-                          </Field>
-                          <Field label={t("symbol")}>
-                            <input
-                              value={instrument.symbol}
-                              onChange={(e) =>
-                                updateInstrument({
-                                  symbol: e.target.value.toUpperCase(),
-                                })
-                              }
-                            />
-                          </Field>
-                          <Field label={t("above")}>
-                            <select
-                              value={alertComparison}
-                              onChange={(e) =>
-                                setAlertComparison(e.target.value)
-                              }
-                            >
-                              <option value="above">{t("above")}</option>
-                              <option value="below">{t("below")}</option>
-                            </select>
-                          </Field>
-                          {alertKind === "indicator" && (
-                            <Field label={t("indicator")}>
+                    <PageTabs
+                      name={t("alerts")}
+                      value={alertSection}
+                      onChange={setAlertSection}
+                      labels={[
+                        t("pageAlertList"),
+                        t("schedule"),
+                        t("notifications"),
+                      ]}
+                    >
+                      <div>
+                        <DisclosureCard title={t("pageNewAlert")}>
+                          <div className="form-grid">
+                            <Field label={t("condition")}>
                               <select
-                                value={alertIndicator}
-                                onChange={(e) =>
-                                  setAlertIndicator(e.target.value)
-                                }
+                                value={alertKind}
+                                onChange={(e) => setAlertKind(e.target.value)}
                               >
-                                <option>RSI</option>
-                                <option>EMA20</option>
+                                {[
+                                  "price",
+                                  "indicator",
+                                  "ai_signal",
+                                  "drawing",
+                                ].map((k) => (
+                                  <option key={k} value={k}>
+                                    {t(
+                                      k === "ai_signal"
+                                        ? "analysis"
+                                        : k === "drawing"
+                                          ? "drawings"
+                                          : k,
+                                    )}
+                                  </option>
+                                ))}
                               </select>
                             </Field>
-                          )}
-                          {alertKind === "drawing" ? (
-                            <Field label={t("savedDrawings")}>
+                            <Field label={t("symbol")}>
                               <input
-                                value={alertDrawingId}
+                                value={instrument.symbol}
                                 onChange={(e) =>
-                                  setAlertDrawingId(e.target.value)
+                                  updateInstrument({
+                                    symbol: e.target.value.toUpperCase(),
+                                  })
                                 }
                               />
                             </Field>
-                          ) : (
-                            <Field label={t("price")}>
-                              <NumberInput
-                                value={alertValue}
-                                set={setAlertValue}
-                              />
-                            </Field>
-                          )}
-                        </div>
-                        <div className="checks">
-                          {["in_app", "email", "telegram", "push"].map((c) => (
-                            <label key={c}>
-                              <input
-                                type="checkbox"
-                                checked={alertChannels.includes(c)}
+                            <Field label={t("above")}>
+                              <select
+                                value={alertComparison}
                                 onChange={(e) =>
-                                  setAlertChannels(
-                                    e.target.checked
-                                      ? [...alertChannels, c]
-                                      : alertChannels.filter((x) => x !== c),
-                                  )
+                                  setAlertComparison(e.target.value)
                                 }
-                              />
-                              {t(c)}
-                            </label>
-                          ))}
-                        </div>
-                        <Button
-                          onClick={() =>
-                            perform("alert", async () => {
-                              await api("alerts", {
-                                method: "POST",
-                                body: {
-                                  kind: alertKind,
-                                  condition: {
-                                    ...instrument,
-                                    comparison: alertComparison,
-                                    ...(alertKind === "indicator"
-                                      ? {
-                                          indicator: alertIndicator,
-                                          value: alertValue,
-                                        }
-                                      : alertKind === "drawing"
-                                        ? { drawingId: alertDrawingId }
-                                        : alertKind === "price"
-                                          ? { price: alertValue }
-                                          : {}),
-                                  },
-                                  channels: alertChannels,
-                                },
-                              });
-                              await refreshRecords();
-                              setToast(t("saved"));
-                            })
-                          }
-                        >
-                          <Plus size={16} />
-                          {t("create")}
-                        </Button>
-                      </div>
-                      {table(
-                        [t("symbol"), t("condition"), t("date"), t("delete")],
-                        records.map((r) => [
-                          r.condition.symbol,
-                          r.kind,
-                          date(r.created_at),
-                          <button
-                            className="icon-button"
-                            title={t("delete")}
+                              >
+                                <option value="above">{t("above")}</option>
+                                <option value="below">{t("below")}</option>
+                              </select>
+                            </Field>
+                            {alertKind === "indicator" && (
+                              <Field label={t("indicator")}>
+                                <select
+                                  value={alertIndicator}
+                                  onChange={(e) =>
+                                    setAlertIndicator(e.target.value)
+                                  }
+                                >
+                                  <option>RSI</option>
+                                  <option>EMA20</option>
+                                </select>
+                              </Field>
+                            )}
+                            {alertKind === "drawing" ? (
+                              <Field label={t("savedDrawings")}>
+                                <input
+                                  value={alertDrawingId}
+                                  onChange={(e) =>
+                                    setAlertDrawingId(e.target.value)
+                                  }
+                                />
+                              </Field>
+                            ) : (
+                              <Field label={t("price")}>
+                                <NumberInput
+                                  value={alertValue}
+                                  set={setAlertValue}
+                                />
+                              </Field>
+                            )}
+                          </div>
+                          <div className="checks">
+                            {["in_app", "email", "telegram", "push"].map(
+                              (c) => (
+                                <label key={c}>
+                                  <input
+                                    type="checkbox"
+                                    checked={alertChannels.includes(c)}
+                                    onChange={(e) =>
+                                      setAlertChannels(
+                                        e.target.checked
+                                          ? [...alertChannels, c]
+                                          : alertChannels.filter(
+                                              (x) => x !== c,
+                                            ),
+                                      )
+                                    }
+                                  />
+                                  {t(c)}
+                                </label>
+                              ),
+                            )}
+                          </div>
+                          <Button
                             onClick={() =>
-                              perform("delete", async () => {
-                                await api("alerts/" + r.id, {
-                                  method: "DELETE",
-                                  body: {},
+                              perform("alert", async () => {
+                                await api("alerts", {
+                                  method: "POST",
+                                  body: {
+                                    kind: alertKind,
+                                    condition: {
+                                      ...instrument,
+                                      comparison: alertComparison,
+                                      ...(alertKind === "indicator"
+                                        ? {
+                                            indicator: alertIndicator,
+                                            value: alertValue,
+                                          }
+                                        : alertKind === "drawing"
+                                          ? { drawingId: alertDrawingId }
+                                          : alertKind === "price"
+                                            ? { price: alertValue }
+                                            : {}),
+                                    },
+                                    channels: alertChannels,
+                                  },
                                 });
                                 await refreshRecords();
+                                setToast(t("saved"));
                               })
                             }
                           >
-                            <Trash2 size={16} />
-                          </button>,
-                        ]),
-                      )}
+                            <Plus size={16} />
+                            {t("create")}
+                          </Button>
+                        </DisclosureCard>
+                        {table(
+                          [t("symbol"), t("condition"), t("date"), t("delete")],
+                          records.map((r) => [
+                            r.condition.symbol,
+                            r.kind,
+                            date(r.created_at),
+                            <button
+                              className="icon-button"
+                              title={t("delete")}
+                              onClick={() =>
+                                perform("delete", async () => {
+                                  await api("alerts/" + r.id, {
+                                    method: "DELETE",
+                                    body: {},
+                                  });
+                                  await refreshRecords();
+                                })
+                              }
+                            >
+                              <Trash2 size={16} />
+                            </button>,
+                          ]),
+                        )}
+                      </div>
                       <div className="form-card">
                         <h2>{t("schedule")}</h2>
                         <div className="form-grid">
@@ -2386,24 +2437,31 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                           ]),
                         )}
                       </div>
-                      <h2>{t("notifications")}</h2>
-                      {notifications.map((n) => (
-                        <div className="notification-item" key={n.id}>
-                          <strong>
-                            {t.has(n.title_key)
-                              ? t(n.title_key)
-                              : t("notifications")}
-                          </strong>
-                          <span>{n.data.symbol}</span>
-                          <small>{date(n.created_at)}</small>
-                        </div>
-                      ))}
-                    </>
+                      <div>
+                        <h2>{t("notifications")}</h2>
+                        {notifications.map((n) => (
+                          <div className="notification-item" key={n.id}>
+                            <strong>
+                              {t.has(n.title_key)
+                                ? t(n.title_key)
+                                : t("notifications")}
+                            </strong>
+                            <span>{n.data.symbol}</span>
+                            <small>{date(n.created_at)}</small>
+                          </div>
+                        ))}
+                        {!notifications.length && (
+                          <p className="feature-empty">
+                            {t("pageNoNotifications")}
+                          </p>
+                        )}
+                      </div>
+                    </PageTabs>
                   )}
                   {tab === "journal" && (
                     <>
                       <JournalInsights records={records} locale={locale} />
-                      <div className="form-card">
+                      <DisclosureCard title={t("pageNewJournalEntry")}>
                         <div className="form-grid">
                           {["symbol", "entry", "exit", "quantity", "fees"].map(
                             (k) => (
@@ -2503,7 +2561,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                         >
                           {t("save")}
                         </Button>
-                      </div>
+                      </DisclosureCard>
                       {table(
                         [
                           t("symbol"),
@@ -2535,8 +2593,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                           </span>,
                         ]),
                       )}
-                      <div className="form-card">
-                        <h2>{t("review")}</h2>
+                      <DisclosureCard title={t("review")}>
                         <div className="form-grid">{providerControls}</div>
                         <Button
                           onClick={() =>
@@ -2555,12 +2612,14 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                           {t("review")}
                         </Button>
                         {review && <p className="prose-output">{review}</p>}
-                      </div>
+                      </DisclosureCard>
                     </>
                   )}
                   {tab === "paper" && (
                     <PaperPanel
-                      onMarketChange={() => updateInstrument({market:"perpetual"})}
+                      onMarketChange={() =>
+                        updateInstrument({ market: "perpetual" })
+                      }
                       key={[
                         instrument.venue,
                         instrument.market,
@@ -2642,7 +2701,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                   {tab === "backtest" && (
                     <>
                       <p className="muted">{t("backtestHint")}</p>
-                      <div className="form-card">
+                      <div className="form-card feature-backtest-form">
                         <div className="form-grid">
                           <Field label={t("fast")}>
                             <NumberInput
@@ -2666,13 +2725,18 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                           <Field label={t("riskPct")}>
                             <NumberInput value={riskPct} set={setRiskPct} />
                           </Field>
-                          <Field label={t("feeBps")}>
-                            <NumberInput value={fees} set={setFees} />
-                          </Field>
-                          <Field label={t("slippageBps")}>
-                            <NumberInput value={slippage} set={setSlippage} />
-                          </Field>
                         </div>
+                        <details className="feature-options">
+                          <summary>{t("pageExecutionCosts")}</summary>
+                          <div className="form-grid">
+                            <Field label={t("feeBps")}>
+                              <NumberInput value={fees} set={setFees} />
+                            </Field>
+                            <Field label={t("slippageBps")}>
+                              <NumberInput value={slippage} set={setSlippage} />
+                            </Field>
+                          </div>
+                        </details>
                         <Button
                           onClick={() =>
                             perform("backtest", async () => {
@@ -2751,7 +2815,147 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                     </>
                   )}
                   {tab === "settings" && (
-                    <>
+                    <PageTabs
+                      name={t("settings")}
+                      labels={[
+                        t("pagePreferences"),
+                        t("pageWallet"),
+                        t("pageAIKeys"),
+                        t("exchangeImport"),
+                        t("twoFactor"),
+                        t("pageAccount"),
+                      ]}
+                    >
+                      <div className="form-card">
+                        <h2>{t("pagePreferences")}</h2>
+                        <div className="form-grid">
+                          <Field label={t("language")}>
+                            <select
+                              value={locale}
+                              onChange={(e) => setLocale(e.target.value)}
+                            >
+                              <option value="en">English</option>
+                              <option value="pl">Polski</option>
+                              <option value="de">Deutsch</option>
+                            </select>
+                          </Field>
+                          <Field label={t("timezone")}>
+                            <input
+                              value={timezone}
+                              onChange={(e) => setTimezone(e.target.value)}
+                            />
+                          </Field>
+                          <Field label={t("theme")}>
+                            <select
+                              value={theme}
+                              onChange={(e) => setTheme(e.target.value)}
+                            >
+                              <option value="dark">{t("dark")}</option>
+                              <option value="light">{t("light")}</option>
+                            </select>
+                          </Field>
+                          <Field label={t("dailyLossLimit")}>
+                            <NumberInput value={lossLimit} set={setLossLimit} />
+                          </Field>
+                          <Field label={t("drawdown")}>
+                            <NumberInput
+                              value={maxDrawdown}
+                              set={setMaxDrawdown}
+                            />
+                          </Field>
+                          <Field label={t("telegramChatId")}>
+                            <input
+                              value={telegramChatId}
+                              onChange={(e) =>
+                                setTelegramChatId(e.target.value)
+                              }
+                            />
+                          </Field>
+                        </div>
+                        <Button
+                          onClick={() =>
+                            perform("settings", async () => {
+                              await api("settings", {
+                                method: "PATCH",
+                                body: {
+                                  locale,
+                                  timezone,
+                                  settings: {
+                                    theme,
+                                    dailyLossLimit: lossLimit,
+                                    maxDrawdownPct: maxDrawdown,
+                                    ...(telegramChatId
+                                      ? { telegramChatId }
+                                      : {}),
+                                  },
+                                },
+                              });
+                              setToast(t("saved"));
+                            })
+                          }
+                        >
+                          {t("save")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          disabled={!configuration.pushKey}
+                          onClick={() =>
+                            perform("push", async () => {
+                              if (
+                                !("serviceWorker" in navigator) ||
+                                !("PushManager" in window)
+                              )
+                                throw new Error("service_unavailable");
+                              const permission =
+                                await Notification.requestPermission();
+                              if (permission !== "granted") return;
+                              const registration =
+                                await navigator.serviceWorker.register(
+                                  "/sw.js",
+                                );
+                              await navigator.serviceWorker.ready;
+                              const encoded = configuration.pushKey
+                                  .replace(/-/g, "+")
+                                  .replace(/_/g, "/"),
+                                raw = atob(
+                                  encoded +
+                                    "=".repeat((4 - (encoded.length % 4)) % 4),
+                                ),
+                                key = Uint8Array.from(raw, (c: string) =>
+                                  c.charCodeAt(0),
+                                );
+                              const subscription =
+                                await registration.pushManager.subscribe({
+                                  userVisibleOnly: true,
+                                  applicationServerKey: key,
+                                });
+                              await api("push", {
+                                method: "POST",
+                                body: subscription.toJSON(),
+                              });
+                              setToast(t("saved"));
+                            })
+                          }
+                        >
+                          {t("enablePush")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            perform("logout", async () => {
+                              await api("auth/logout", {
+                                method: "POST",
+                                body: {},
+                              });
+                              setUser(null);
+                              setCsrf("");
+                            })
+                          }
+                        >
+                          <LogOut size={15} />
+                          {t("logout")}
+                        </Button>
+                      </div>
                       <WalletAccess
                         chains={configuration.walletChains}
                         user={user}
@@ -2760,424 +2964,279 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                           await loadMe();
                         }}
                       />
-                      <div className="settings-grid">
-                        <div className="form-card">
-                          <h2>{t("settings")}</h2>
-                          <div className="form-grid">
-                            <Field label={t("language")}>
-                              <select
-                                value={locale}
-                                onChange={(e) => setLocale(e.target.value)}
-                              >
-                                <option value="en">English</option>
-                                <option value="pl">Polski</option>
-                                <option value="de">Deutsch</option>
-                              </select>
-                            </Field>
-                            <Field label={t("timezone")}>
-                              <input
-                                value={timezone}
-                                onChange={(e) => setTimezone(e.target.value)}
-                              />
-                            </Field>
-                            <Field label={t("theme")}>
-                              <select
-                                value={theme}
-                                onChange={(e) => setTheme(e.target.value)}
-                              >
-                                <option value="dark">{t("dark")}</option>
-                                <option value="light">{t("light")}</option>
-                              </select>
-                            </Field>
-                            <Field label={t("dailyLossLimit")}>
-                              <NumberInput
-                                value={lossLimit}
-                                set={setLossLimit}
-                              />
-                            </Field>
-                            <Field label={t("drawdown")}>
-                              <NumberInput
-                                value={maxDrawdown}
-                                set={setMaxDrawdown}
-                              />
-                            </Field>
-                            <Field label={t("telegramChatId")}>
-                              <input
-                                value={telegramChatId}
-                                onChange={(e) =>
-                                  setTelegramChatId(e.target.value)
-                                }
-                              />
-                            </Field>
-                          </div>
-                          <Button
-                            onClick={() =>
-                              perform("settings", async () => {
-                                await api("settings", {
-                                  method: "PATCH",
-                                  body: {
-                                    locale,
-                                    timezone,
-                                    settings: {
-                                      theme,
-                                      dailyLossLimit: lossLimit,
-                                      maxDrawdownPct: maxDrawdown,
-                                      ...(telegramChatId
-                                        ? { telegramChatId }
-                                        : {}),
-                                    },
-                                  },
-                                });
-                                setToast(t("saved"));
-                              })
-                            }
-                          >
-                            {t("save")}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            disabled={!configuration.pushKey}
-                            onClick={() =>
-                              perform("push", async () => {
-                                if (
-                                  !("serviceWorker" in navigator) ||
-                                  !("PushManager" in window)
-                                )
-                                  throw new Error("service_unavailable");
-                                const permission =
-                                  await Notification.requestPermission();
-                                if (permission !== "granted") return;
-                                const registration =
-                                  await navigator.serviceWorker.register(
-                                    "/sw.js",
-                                  );
-                                await navigator.serviceWorker.ready;
-                                const encoded = configuration.pushKey
-                                    .replace(/-/g, "+")
-                                    .replace(/_/g, "/"),
-                                  raw = atob(
-                                    encoded +
-                                      "=".repeat(
-                                        (4 - (encoded.length % 4)) % 4,
-                                      ),
-                                  ),
-                                  key = Uint8Array.from(raw, (c: string) =>
-                                    c.charCodeAt(0),
-                                  );
-                                const subscription =
-                                  await registration.pushManager.subscribe({
-                                    userVisibleOnly: true,
-                                    applicationServerKey: key,
+                      <div className="form-card">
+                        <h2>{t("apiKey")}</h2>
+                        <p className="muted">{t("keyHint")}</p>
+                        <div className="form-grid">
+                          {providerControls}
+                          <Field label={t("apiKey")}>
+                            <input
+                              type="password"
+                              value={keyValue}
+                              onChange={(e) => setKeyValue(e.target.value)}
+                              autoComplete="new-password"
+                            />
+                          </Field>
+                        </div>
+                        <Button
+                          onClick={() =>
+                            perform("key", async () => {
+                              await api("credentials", {
+                                method: "POST",
+                                body: { provider, key: keyValue },
+                              });
+                              setKeyValue("");
+                              setKeys(await api("credentials"));
+                              setModelCatalogRevision(
+                                (revision) => revision + 1,
+                              );
+                              setToast(t("saved"));
+                            })
+                          }
+                        >
+                          {t("save")}
+                        </Button>
+                        {keys.map((k) => (
+                          <div className="key-row" key={k.id}>
+                            <Check size={16} className="positive" />
+                            <span>{k.provider}</span>
+                            <button
+                              className="icon-button"
+                              title={t("delete")}
+                              onClick={() =>
+                                perform("key", async () => {
+                                  await api("credentials/" + k.id, {
+                                    method: "DELETE",
+                                    body: {},
                                   });
-                                await api("push", {
-                                  method: "POST",
-                                  body: subscription.toJSON(),
-                                });
-                                setToast(t("saved"));
-                              })
-                            }
-                          >
-                            {t("enablePush")}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              perform("logout", async () => {
-                                await api("auth/logout", {
-                                  method: "POST",
-                                  body: {},
-                                });
-                                setUser(null);
-                                setCsrf("");
-                              })
-                            }
-                          >
-                            <LogOut size={15} />
-                            {t("logout")}
-                          </Button>
-                        </div>
-                        <div className="form-card">
-                          <h2>{t("apiKey")}</h2>
-                          <p className="muted">{t("keyHint")}</p>
-                          <div className="form-grid">
-                            {providerControls}
-                            <Field label={t("apiKey")}>
-                              <input
-                                type="password"
-                                value={keyValue}
-                                onChange={(e) => setKeyValue(e.target.value)}
-                                autoComplete="new-password"
-                              />
-                            </Field>
+                                  setKeys(await api("credentials"));
+                                  setModelCatalogRevision(
+                                    (revision) => revision + 1,
+                                  );
+                                })
+                              }
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
-                          <Button
-                            onClick={() =>
-                              perform("key", async () => {
-                                await api("credentials", {
-                                  method: "POST",
-                                  body: { provider, key: keyValue },
-                                });
-                                setKeyValue("");
-                                setKeys(await api("credentials"));
-                                setModelCatalogRevision(
-                                  (revision) => revision + 1,
-                                );
-                                setToast(t("saved"));
-                              })
-                            }
-                          >
-                            {t("save")}
-                          </Button>
-                          {keys.map((k) => (
-                            <div className="key-row" key={k.id}>
-                              <Check size={16} className="positive" />
-                              <span>{k.provider}</span>
-                              <button
-                                className="icon-button"
-                                title={t("delete")}
-                                onClick={() =>
-                                  perform("key", async () => {
-                                    await api("credentials/" + k.id, {
-                                      method: "DELETE",
-                                      body: {},
-                                    });
-                                    setKeys(await api("credentials"));
-                                    setModelCatalogRevision(
-                                      (revision) => revision + 1,
-                                    );
-                                  })
-                                }
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="form-card">
-                          <h2>{t("exchangeImport")}</h2>
-                          <div className="form-grid">
-                            <Field label={t("exchangeKey")}>
-                              <input
-                                type="password"
-                                value={exchangeKey}
-                                onChange={(e) => setExchangeKey(e.target.value)}
-                                autoComplete="new-password"
-                              />
-                            </Field>
-                            <Field label={t("exchangeSecret")}>
-                              <input
-                                type="password"
-                                value={exchangeSecret}
-                                onChange={(e) =>
-                                  setExchangeSecret(e.target.value)
-                                }
-                                autoComplete="new-password"
-                              />
-                            </Field>
-                          </div>
-                          <Button
-                            onClick={() =>
-                              perform("exchange", async () => {
-                                await api("exchange/connect", {
-                                  method: "POST",
-                                  body: {
-                                    apiKey: exchangeKey,
-                                    secret: exchangeSecret,
-                                  },
-                                });
-                                setExchangeKey("");
-                                setExchangeSecret("");
-                                setToast(t("saved"));
-                              })
-                            }
-                          >
-                            {t("connectReadonly")}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              perform("exchange", async () =>
-                                setPortfolio(await api("exchange/portfolio")),
-                              )
-                            }
-                          >
-                            {t("loadPortfolio")}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              perform("exchange", async () =>
-                                setImportedTrades(
-                                  await api(
-                                    "exchange/trades?symbol=" +
-                                      instrument.symbol,
-                                  ),
-                                ),
-                              )
-                            }
-                          >
-                            {t("importTrades")}
-                          </Button>
-                          {portfolio &&
-                            table(
-                              [t("symbol"), t("balance")],
-                              portfolio.balances.map((b: any) => [
-                                b.asset,
-                                fmt(+b.free + +b.locked, 6),
-                              ]),
-                            )}
-                          {importedTrades.length > 0 &&
-                            table(
-                              [
-                                t("symbol"),
-                                t("price"),
-                                t("quantity"),
-                                t("fees"),
-                              ],
-                              importedTrades.map((r) => [
-                                r.symbol,
-                                fmt(r.data.price),
-                                fmt(r.data.qty, 6),
-                                r.data.commission +
-                                  " " +
-                                  r.data.commissionAsset,
-                              ]),
-                            )}
-                        </div>
-                        <div className="form-card">
-                          <h2>{t("twoFactor")}</h2>
-                          {user.two_factor ? (
-                            <>
-                              <span className="positive">{t("active")}</span>
-                              <Field label={t("password")}>
-                                <input
-                                  type="password"
-                                  value={password}
-                                  onChange={(e) => setPassword(e.target.value)}
-                                />
-                              </Field>
-                              <Field label={t("totpCode")}>
-                                <input
-                                  value={totpCode}
-                                  onChange={(e) => setTotpCode(e.target.value)}
-                                />
-                              </Field>
-                              <Button
-                                variant="outline"
-                                onClick={() =>
-                                  perform("totp", async () => {
-                                    await api("totp", {
-                                      method: "DELETE",
-                                      body: { password, code: totpCode },
-                                    });
-                                    setPassword("");
-                                    setTotpCode("");
-                                    await loadMe();
-                                  })
-                                }
-                              >
-                                {t("disable")}
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                variant="outline"
-                                onClick={() =>
-                                  perform("totp", async () =>
-                                    setTotpSecret(await api("totp")),
-                                  )
-                                }
-                              >
-                                {t("enable")}
-                              </Button>
-                              {totpSecret && (
-                                <>
-                                  <Field label={t("secret")}>
-                                    <input readOnly value={totpSecret.secret} />
-                                  </Field>
-                                  <Field label={t("totpCode")}>
-                                    <input
-                                      value={totpCode}
-                                      onChange={(e) =>
-                                        setTotpCode(e.target.value)
-                                      }
-                                      inputMode="numeric"
-                                    />
-                                  </Field>
-                                  <Button
-                                    onClick={() =>
-                                      perform("totp", async () => {
-                                        await api("totp", {
-                                          method: "POST",
-                                          body: {
-                                            secret: totpSecret.secret,
-                                            code: totpCode,
-                                          },
-                                        });
-                                        setTotpSecret(null);
-                                        setTotpCode("");
-                                        await loadMe();
-                                      })
-                                    }
-                                  >
-                                    {t("save")}
-                                  </Button>
-                                </>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        <div className="form-card">
-                          <h2>{t("account")}</h2>
-                          {stat(t("usage"), usage?.analyses || 0)}
-                          <p>
-                            {t("cost")}: {fmt(usage?.reserved || 0)} USD
-                          </p>
-                          <Button
-                            variant="outline"
-                            disabled={!configuration.billing}
-                            onClick={() =>
-                              perform("billing", async () => {
-                                const r = await api("billing/checkout", {
-                                  method: "POST",
-                                  body: {},
-                                });
-                                location.assign(r.url);
-                              })
-                            }
-                          >
-                            {t("upgrade")}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              perform("export", async () => {
-                                const r = await api("account/export"),
-                                  u = URL.createObjectURL(
-                                    new Blob([JSON.stringify(r, null, 2)], {
-                                      type: "application/json",
-                                    }),
-                                  ),
-                                  a = document.createElement("a");
-                                a.href = u;
-                                a.download = "CryptoSight-account.json";
-                                a.click();
-                                URL.revokeObjectURL(u);
-                              })
-                            }
-                          >
-                            {t("exportAccount")}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => setDeleteOpen(true)}
-                          >
-                            {t("deleteAccount")}
-                          </Button>
-                        </div>
+                        ))}
                       </div>
-                    </>
+                      <div className="form-card">
+                        <h2>{t("exchangeImport")}</h2>
+                        <div className="form-grid">
+                          <Field label={t("exchangeKey")}>
+                            <input
+                              type="password"
+                              value={exchangeKey}
+                              onChange={(e) => setExchangeKey(e.target.value)}
+                              autoComplete="new-password"
+                            />
+                          </Field>
+                          <Field label={t("exchangeSecret")}>
+                            <input
+                              type="password"
+                              value={exchangeSecret}
+                              onChange={(e) =>
+                                setExchangeSecret(e.target.value)
+                              }
+                              autoComplete="new-password"
+                            />
+                          </Field>
+                        </div>
+                        <Button
+                          onClick={() =>
+                            perform("exchange", async () => {
+                              await api("exchange/connect", {
+                                method: "POST",
+                                body: {
+                                  apiKey: exchangeKey,
+                                  secret: exchangeSecret,
+                                },
+                              });
+                              setExchangeKey("");
+                              setExchangeSecret("");
+                              setToast(t("saved"));
+                            })
+                          }
+                        >
+                          {t("connectReadonly")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            perform("exchange", async () =>
+                              setPortfolio(await api("exchange/portfolio")),
+                            )
+                          }
+                        >
+                          {t("loadPortfolio")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            perform("exchange", async () =>
+                              setImportedTrades(
+                                await api(
+                                  "exchange/trades?symbol=" + instrument.symbol,
+                                ),
+                              ),
+                            )
+                          }
+                        >
+                          {t("importTrades")}
+                        </Button>
+                        {portfolio &&
+                          table(
+                            [t("symbol"), t("balance")],
+                            portfolio.balances.map((b: any) => [
+                              b.asset,
+                              fmt(+b.free + +b.locked, 6),
+                            ]),
+                          )}
+                        {importedTrades.length > 0 &&
+                          table(
+                            [t("symbol"), t("price"), t("quantity"), t("fees")],
+                            importedTrades.map((r) => [
+                              r.symbol,
+                              fmt(r.data.price),
+                              fmt(r.data.qty, 6),
+                              r.data.commission + " " + r.data.commissionAsset,
+                            ]),
+                          )}
+                      </div>
+                      <div className="form-card">
+                        <h2>{t("twoFactor")}</h2>
+                        {user.two_factor ? (
+                          <>
+                            <span className="positive">{t("active")}</span>
+                            <Field label={t("password")}>
+                              <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                              />
+                            </Field>
+                            <Field label={t("totpCode")}>
+                              <input
+                                value={totpCode}
+                                onChange={(e) => setTotpCode(e.target.value)}
+                              />
+                            </Field>
+                            <Button
+                              variant="outline"
+                              onClick={() =>
+                                perform("totp", async () => {
+                                  await api("totp", {
+                                    method: "DELETE",
+                                    body: { password, code: totpCode },
+                                  });
+                                  setPassword("");
+                                  setTotpCode("");
+                                  await loadMe();
+                                })
+                              }
+                            >
+                              {t("disable")}
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="outline"
+                              onClick={() =>
+                                perform("totp", async () =>
+                                  setTotpSecret(await api("totp")),
+                                )
+                              }
+                            >
+                              {t("enable")}
+                            </Button>
+                            {totpSecret && (
+                              <>
+                                <Field label={t("secret")}>
+                                  <input readOnly value={totpSecret.secret} />
+                                </Field>
+                                <Field label={t("totpCode")}>
+                                  <input
+                                    value={totpCode}
+                                    onChange={(e) =>
+                                      setTotpCode(e.target.value)
+                                    }
+                                    inputMode="numeric"
+                                  />
+                                </Field>
+                                <Button
+                                  onClick={() =>
+                                    perform("totp", async () => {
+                                      await api("totp", {
+                                        method: "POST",
+                                        body: {
+                                          secret: totpSecret.secret,
+                                          code: totpCode,
+                                        },
+                                      });
+                                      setTotpSecret(null);
+                                      setTotpCode("");
+                                      await loadMe();
+                                    })
+                                  }
+                                >
+                                  {t("save")}
+                                </Button>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      <div className="form-card">
+                        <h2>{t("pageAccount")}</h2>
+                        {stat(t("usage"), usage?.analyses || 0)}
+                        <p>
+                          {t("cost")}: {fmt(usage?.reserved || 0)} USD
+                        </p>
+                        <Button
+                          variant="outline"
+                          disabled={!configuration.billing}
+                          onClick={() =>
+                            perform("billing", async () => {
+                              const r = await api("billing/checkout", {
+                                method: "POST",
+                                body: {},
+                              });
+                              location.assign(r.url);
+                            })
+                          }
+                        >
+                          {t("upgrade")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            perform("export", async () => {
+                              const r = await api("account/export"),
+                                u = URL.createObjectURL(
+                                  new Blob([JSON.stringify(r, null, 2)], {
+                                    type: "application/json",
+                                  }),
+                                ),
+                                a = document.createElement("a");
+                              a.href = u;
+                              a.download = "CryptoSight-account.json";
+                              a.click();
+                              URL.revokeObjectURL(u);
+                            })
+                          }
+                        >
+                          {t("exportAccount")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setDeleteOpen(true)}
+                        >
+                          {t("deleteAccount")}
+                        </Button>
+                      </div>
+                    </PageTabs>
                   )}
                 </>
               )}

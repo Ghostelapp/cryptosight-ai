@@ -49,6 +49,7 @@ test("quick commands navigate, search markets, close with Escape and work from i
   await expect(
     page.getByRole("heading", { name: "Screener", exact: true }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: "Market list", exact: true }).click();
   await page.getByLabel("Search pairs", { exact: true }).fill("ETH");
   await page.keyboard.press("Control+k");
   await page
@@ -102,6 +103,7 @@ test("screener combines filters, sorts, handles no results and opens a chart", a
   await openTerminal(page);
   await command(page, "screener");
   const screener = page.getByRole("region", { name: "Screener", exact: true });
+  await page.getByRole("tab", { name: "Market list", exact: true }).click();
   await expect(screener.locator("tbody tr")).toHaveCount(3);
   await screener.getByLabel("24h movement").selectOption("losers");
   await expect(screener.locator("tbody tr")).toHaveCount(1);
@@ -180,6 +182,7 @@ test("journal analytics and CSV reflect a saved trade including fees", async ({
     .click();
   await expect(page.locator(".account-button")).toBeVisible();
   await command(page, "Trading journal");
+  await page.getByText("Add trade", { exact: true }).click();
   await page.getByLabel("Entry", { exact: true }).fill("100");
   await page.getByLabel("Exit", { exact: true }).fill("110");
   await page.getByLabel("Fees", { exact: true }).fill("2");

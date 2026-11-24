@@ -36,6 +36,7 @@ function Field({ label, children }: any) {
 export function AdminPanel({ api, user, onChanged }: any) {
   const t = useTranslations();
   const [section, setSection] = useState("agents"),
+    [editorOpen, setEditorOpen] = useState(false),
     [overview, setOverview] = useState<any>(null),
     [agents, setAgents] = useState<Agent[]>([]),
     [agent, setAgent] = useState<Agent>({ ...emptyAgent }),
@@ -121,6 +122,7 @@ export function AdminPanel({ api, user, onChanged }: any) {
   const change = (key: string, value: any) =>
     setAgent((a) => ({ ...a, [key]: value }));
   const reset = () => {
+    setEditorOpen(false);
     setAgent({ ...emptyAgent });
     setApiKey("");
     setClearKey(false);
@@ -220,134 +222,151 @@ export function AdminPanel({ api, user, onChanged }: any) {
         aria-labelledby={"admin-tab-" + section}
       >
         {section === "agents" && (
-          <div className="settings-grid admin-agent-grid">
-            <div className="form-card">
-              <h2>{agent.id ? t("adminEditAgent") : t("adminNewAgent")}</h2>
-              <div className="form-grid">
-                <Field label={t("name")}>
-                  <input
-                    value={agent.name}
-                    onChange={(e) => change("name", e.target.value)}
-                    maxLength={80}
-                  />
-                </Field>
-                <Field label={t("provider")}>
-                  <select
-                    value={agent.provider}
-                    onChange={(e) => {
-                      change("provider", e.target.value);
-                      change("model", "");
-                      setApiKey("");
-                    }}
-                  >
-                    {[
-                      "openai",
-                      "gemini",
-                      "anthropic",
-                      "openrouter",
-                      "local",
-                    ].map((p) => (
-                      <option key={p}>{p}</option>
-                    ))}
-                  </select>
-                </Field>
-                <div className="field">
-                  <span>{t("model")}</span>
-                  <ModelPicker
-                    provider={agent.provider}
-                    value={agent.model}
-                    onChange={(value) => change("model", value)}
-                    apiKey={apiKey}
-                    agentId={agent.has_key ? agent.id : undefined}
-                    automatic={false}
-                  />
-                </div>
-                <Field label={t("adminMinTier")}>
-                  <select
-                    value={agent.min_tier}
-                    onChange={(e) => change("min_tier", e.target.value)}
-                  >
-                    <option value="free">{t("adminAllUsers")}</option>
-                    <option value="pro">{t("adminProOnly")}</option>
-                  </select>
-                </Field>
-              </div>
-              <Field label={t("adminDescription")}>
-                <textarea
-                  value={agent.description}
-                  onChange={(e) => change("description", e.target.value)}
-                  maxLength={500}
-                />
-              </Field>
-              <Field label={t("adminInstructions")}>
-                <textarea
-                  value={agent.instructions}
-                  onChange={(e) => change("instructions", e.target.value)}
-                  maxLength={2000}
-                />
-              </Field>
-              <p className="muted">{t("adminInstructionsHint")}</p>
-              {agent.provider !== "local" && (
-                <>
-                  <Field label={t("apiKey")}>
+          <div
+            className="settings-grid admin-agent-grid"
+            style={
+              !editorOpen ? { gridTemplateColumns: "minmax(0,1fr)" } : undefined
+            }
+          >
+            <details
+              className="form-card feature-disclosure"
+              open={editorOpen}
+              onToggle={(e) => setEditorOpen(e.currentTarget.open)}
+            >
+              <summary>
+                {agent.id ? t("adminEditAgent") : t("adminNewAgent")}
+              </summary>
+              <div className="disclosure-body">
+                <div className="form-grid">
+                  <Field label={t("name")}>
                     <input
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      autoComplete="new-password"
-                      placeholder={
-                        agent.has_key
-                          ? t("adminKeyStored")
-                          : t("adminKeyRequired")
-                      }
+                      value={agent.name}
+                      onChange={(e) => change("name", e.target.value)}
+                      maxLength={80}
                     />
                   </Field>
-                  <p className="muted">{t("adminKeyHint")}</p>
-                  {agent.has_key && (
-                    <label className="wallet-consent">
+                  <Field label={t("provider")}>
+                    <select
+                      value={agent.provider}
+                      onChange={(e) => {
+                        change("provider", e.target.value);
+                        change("model", "");
+                        setApiKey("");
+                      }}
+                    >
+                      {[
+                        "openai",
+                        "gemini",
+                        "anthropic",
+                        "openrouter",
+                        "local",
+                      ].map((p) => (
+                        <option key={p}>{p}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <div className="field">
+                    <span>{t("model")}</span>
+                    <ModelPicker
+                      provider={agent.provider}
+                      value={agent.model}
+                      onChange={(value) => change("model", value)}
+                      apiKey={apiKey}
+                      agentId={agent.has_key ? agent.id : undefined}
+                      automatic={false}
+                    />
+                  </div>
+                  <Field label={t("adminMinTier")}>
+                    <select
+                      value={agent.min_tier}
+                      onChange={(e) => change("min_tier", e.target.value)}
+                    >
+                      <option value="free">{t("adminAllUsers")}</option>
+                      <option value="pro">{t("adminProOnly")}</option>
+                    </select>
+                  </Field>
+                </div>
+                <Field label={t("adminDescription")}>
+                  <textarea
+                    value={agent.description}
+                    onChange={(e) => change("description", e.target.value)}
+                    maxLength={500}
+                  />
+                </Field>
+                <Field label={t("adminInstructions")}>
+                  <textarea
+                    value={agent.instructions}
+                    onChange={(e) => change("instructions", e.target.value)}
+                    maxLength={2000}
+                  />
+                </Field>
+                <p className="muted">{t("adminInstructionsHint")}</p>
+                {agent.provider !== "local" && (
+                  <>
+                    <Field label={t("apiKey")}>
                       <input
-                        type="checkbox"
-                        checked={clearKey}
-                        onChange={(e) => setClearKey(e.target.checked)}
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        autoComplete="new-password"
+                        placeholder={
+                          agent.has_key
+                            ? t("adminKeyStored")
+                            : t("adminKeyRequired")
+                        }
                       />
-                      {t("adminRemoveKey")}
-                    </label>
-                  )}
-                </>
-              )}
-              {agent.provider === "local" && (
-                <p className="event-notice">{t("adminLocalHint")}</p>
-              )}
-              <label className="wallet-consent">
-                <input
-                  type="checkbox"
-                  checked={agent.enabled}
-                  onChange={(e) => change("enabled", e.target.checked)}
-                />
-                {t("adminEnabled")}
-              </label>
-              <div className="admin-actions">
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    perform(async () => {
-                      const { id, has_key, ...payload } = agent;
-                      await write(
-                        id ? "admin/agents/" + id : "admin/agents",
-                        id ? "PUT" : "POST",
-                        { ...payload, clearKey, ...(apiKey ? { apiKey } : {}) },
-                      );
-                      reset();
-                    })
-                  }
-                >
-                  {t("save")}
-                </Button>
-                <Button variant="outline" onClick={reset}>
-                  {t("adminNewAgent")}
-                </Button>
+                    </Field>
+                    <p className="muted">{t("adminKeyHint")}</p>
+                    {agent.has_key && (
+                      <label className="wallet-consent">
+                        <input
+                          type="checkbox"
+                          checked={clearKey}
+                          onChange={(e) => setClearKey(e.target.checked)}
+                        />
+                        {t("adminRemoveKey")}
+                      </label>
+                    )}
+                  </>
+                )}
+                {agent.provider === "local" && (
+                  <p className="event-notice">{t("adminLocalHint")}</p>
+                )}
+                <label className="wallet-consent">
+                  <input
+                    type="checkbox"
+                    checked={agent.enabled}
+                    onChange={(e) => change("enabled", e.target.checked)}
+                  />
+                  {t("adminEnabled")}
+                </label>
+                <div className="admin-actions">
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      perform(async () => {
+                        const { id, has_key, ...payload } = agent;
+                        await write(
+                          id ? "admin/agents/" + id : "admin/agents",
+                          id ? "PUT" : "POST",
+                          {
+                            ...payload,
+                            clearKey,
+                            ...(apiKey ? { apiKey } : {}),
+                          },
+                        );
+                        reset();
+                      })
+                    }
+                  >
+                    {t("save")}
+                  </Button>
+                  <Button variant="outline" onClick={reset}>
+                    {t("close")}
+                  </Button>
+                </div>
               </div>
-            </div>
+            </details>
             <div>
               <h2>{t("adminAgents")}</h2>
               {agents.length === 0 && (
@@ -372,6 +391,7 @@ export function AdminPanel({ api, user, onChanged }: any) {
                       variant="outline"
                       disabled={busy}
                       onClick={() => {
+                        setEditorOpen(true);
                         setAgent({
                           id: a.id,
                           name: a.name,

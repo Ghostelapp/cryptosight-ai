@@ -51,11 +51,10 @@ test("saving a provider key discovers models, supports selection, and clears sta
   await consent.click();
   await expect(page.locator(".account-button")).toBeVisible();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  const keyCard = page
-    .locator(".form-card")
-    .filter({
-      has: page.getByRole("heading", { name: "API key", exact: true }),
-    });
+  await page.getByRole("tab", { name: "AI keys", exact: true }).click();
+  const keyCard = page.locator(".form-card").filter({
+    has: page.getByRole("heading", { name: "API key", exact: true }),
+  });
   await keyCard
     .getByLabel("API key", { exact: true })
     .fill("fixture-browser-key");
@@ -66,12 +65,15 @@ test("saving a provider key discovers models, supports selection, and clears sta
   });
   await expect(picker.locator("option")).toHaveCount(3);
   await picker.selectOption("gpt-fixture-two");
-  await page.screenshot({path:"test-results/model-picker.png",fullPage:true});
+  await page.screenshot({
+    path: "test-results/model-picker.png",
+    fullPage: true,
+  });
   await expect(keyCard.getByLabel("Model ID", { exact: true })).toHaveValue(
     "gpt-fixture-two",
   );
   await keyCard
-    .getByRole("combobox", {name:"AI provider", exact: true })
+    .getByRole("combobox", { name: "AI provider", exact: true })
     .selectOption("gemini");
   await expect(keyCard.getByLabel("Model ID", { exact: true })).toHaveValue("");
   await expect(keyCard.getByRole("status")).toContainText("rejected");

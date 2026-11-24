@@ -62,13 +62,24 @@ export function JournalInsights({
         </Button>
       </div>
       <div className="stats-grid">
-        {cards.map(([label, value]) => (
+        {cards.slice(0, 3).map(([label, value]) => (
           <div className="stat" key={label}>
             <span>{label}</span>
             <strong>{value}</strong>
           </div>
         ))}
       </div>
+      <details className="feature-options">
+        <summary>{t("pageMoreStats")}</summary>
+        <div className="stats-grid">
+          {cards.slice(3).map(([label, value]) => (
+            <div className="stat" key={label}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </div>
+          ))}
+        </div>
+      </details>
       <p className="muted">{t("journalScope", { count: records.length })}</p>
       {records.length > 0 && (
         <figure className="journal-curve">

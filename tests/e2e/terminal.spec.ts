@@ -64,6 +64,7 @@ test("register, journal persistence and calculator flow", async ({ page }) => {
   await page
     .getByRole("button", { name: "Trading journal", exact: true })
     .click();
+  await page.getByText("Add trade", { exact: true }).click();
   await page.getByLabel("Entry", { exact: true }).fill("100");
   await page.getByLabel("Exit", { exact: true }).fill("110");
   await page.getByRole("button", { name: "Save", exact: true }).click();

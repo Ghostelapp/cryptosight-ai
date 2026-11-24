@@ -77,6 +77,8 @@ Architecture and decisions: [ARCHITECTURE.md](docs/ARCHITECTURE.md). Coverage an
 
 Terminal productivity: **Ctrl/Cmd+K** searches pages, tools and markets. Chart preferences restore in this browser and can be reset from quick commands. The screener adds movement/watchlist filters and sortable columns; the journal adds net-performance metrics, a cumulative PnL curve and CSV export. The position calculator supports optional targets and reward/risk after costs. See [PRODUCTIVITY-REVIEW.md](docs/PRODUCTIVITY-REVIEW.md) for calculation scope and validation.
 
+Feature pages use compact cards/tables, dedicated settings/screener/alert tabs and expandable secondary forms. See [COMPACT-PAGES.md](docs/COMPACT-PAGES.md) for navigation, keyboard controls and input-preservation behavior.
+
 ## Administration
 
 The admin panel manages encrypted shared AI-agent keys/models, agent access, users/roles/suspension, AI limits/pause, localized announcements, queued analyses and audit records. Apply migration 005, register your account, then run `npm run admin:bootstrap -- YOUR_EXISTING_USER_UUID` on the server and sign in again. There is no default production admin password. See [docs/ADMIN.md](docs/ADMIN.md) for Docker commands, 2FA, key handling and behavior of queued/running jobs.

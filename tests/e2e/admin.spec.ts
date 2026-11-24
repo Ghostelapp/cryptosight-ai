@@ -27,6 +27,7 @@ test("administrator can save an encrypted agent and expose it in analysis contro
   await expect(
     panel.getByRole("heading", { name: "Administration", exact: true }),
   ).toBeVisible();
+  await panel.getByText("New agent", { exact: true }).click();
   await panel.getByLabel("Name", { exact: true }).fill("E2E managed analyst");
   await panel.getByLabel("Model ID", { exact: true }).fill("test-model");
   await panel
@@ -41,6 +42,19 @@ test("administrator can save an encrypted agent and expose it in analysis contro
   const response = await page.request.get("/api/v1/admin/agents");
   expect(response.status()).toBe(200);
   expect(await response.text()).not.toContain("synthetic-e2e-api-key");
+  await page
+    .locator(".feature-page")
+    .screenshot({ path: "test-results/admin-compact-desktop.png" });
+  await page.setViewportSize({ width: 360, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await page
+    .locator(".feature-page")
+    .screenshot({ path: "test-results/admin-compact-mobile.png" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole("button", { name: "Terminal", exact: true }).click();
   await page
     .getByRole("combobox", { name: "AI agent", exact: true })
