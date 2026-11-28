@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
   output: "standalone",
+  skipProxyUrlNormalize: true,
   poweredByHeader: false,
   serverExternalPackages: [
     "@electric-sql/pglite",

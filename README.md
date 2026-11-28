@@ -10,6 +10,8 @@ The 2026-11-14 integrated update combines advanced paper trading, mobile chart f
 
 Email delivery and Cloudflare Turnstile can be configured in Administration → Integrations. See [setup instructions](docs/AUTH-EMAIL-TURNSTILE.md) and [worker queue retention](docs/QUEUE-RETENTION.md). AI watchlist scans support up to three entry timeframes with separate deep jobs and visible completion/failure states.
 
+The public landing and knowledge base use `PUBLIC_ORIGIN`; the terminal and account flows use `APP_ORIGIN`. Production domain setup: [DOMAIN-SPLIT.md](docs/DOMAIN-SPLIT.md).
+
 ## Local development
 
 Native iOS and Android apps are now in `apps/mobile`. Use `npm run mobile:start` for development and `npm run mobile:apk -- --local` for an Android test APK. They connect to the same backend through one-use PKCE account pairing. Setup, EAS signing and platform limitations: [NATIVE-MOBILE.md](docs/NATIVE-MOBILE.md).

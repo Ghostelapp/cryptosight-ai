@@ -130,3 +130,11 @@ Production build/strict TypeScript and OpenAPI/locale parity checks passed. This
 - Existing published agents and enabled legacy member schedules on the VPS: both zero before deployment. The owner must publish the first agent in Administration; no production agents or provider credentials were invented during this update.
 - Native TypeScript and lint passed. Existing installed native binaries require rebuilding for the new interface; server enforcement applies immediately.
 - Eight affected browser scenarios verified across the batch run and the targeted integrations rerun: administrator publishing, member denial/key-only settings, batch/deep analysis and chart observation flows. The first cold integrations save exceeded its initial assertion wait; the rerun explicitly checked a successful HTTP response and passed. Production build, strict TypeScript and contract/locale parity checks passed.
+
+## 2026-11-28 — landing page and app subdomain
+
+- Imported the public landing, three language versions, knowledge articles, scoped styles and chart module from the supplied archive. Current terminal/backend/security/AI-agent changes are retained.
+- Added host-based routing: marketing root stays on the public hostname, app root renders the terminal, terminal calls to action use APP_ORIGIN, and old account/mobile links preserve their query values on redirect. Canonical URLs/sitemap use PUBLIC_ORIGIN; the app is excluded from indexing.
+- Node suite: 136 passed, 3 optional live tests skipped (139 total). Three new tests exercise real production hostname routing, legacy token preservation and canonical marketing paths.
+- Three affected Chromium scenarios verified across the batch and targeted rerun: public desktop/mobile rendering and transition to the current Polish account panel, Turnstile registration/recovery/reset, knowledge translations and old reset links. Production build and strict TypeScript passed after regenerating stale dev route types; localhost redirect normalization is separately covered by production-host routing tests.
+- Deployment prerequisites: an authoritative A record for app.cryptosight.tech and a valid app certificate, followed by APP_ORIGIN/gateway origin changes. Existing database/accounts are preserved. See DOMAIN-SPLIT.md.

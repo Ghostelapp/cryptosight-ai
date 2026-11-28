@@ -1,8 +1,8 @@
 {
   "name": "CryptoSight AI",
-  "version": "1.9.0-rc.1",
+  "version": "1.10.0-rc.1",
   "validation": {
-    "unit_integration_passed": 133,
+    "unit_integration_passed": 136,
     "live_tests_skipped": 3,
     "strict_typescript": "passed",
     "production_build": "passed",
@@ -12,7 +12,7 @@
     "synthetic_gateway_symbols": 51,
     "synthetic_transport_p95_ms": 1,
     "production_wallet_http_flow": "passed",
-    "browser_scenarios_discovered": 30,
+    "browser_scenarios_discovered": 32,
     "mobile_browser_execution": "29 distinct Chromium scenarios verified across full and targeted runs; batch scanner and integration settings checked on mobile",
     "production_admin_http_flow": "passed",
     "workflow_static_validation": "passed: actionlint 1.7.12",
@@ -38,7 +38,8 @@
     "queue_retention": "bounded scheduler history and worker heartbeats; production Redis OOM recovered",
     "auth_panel": "passed: four affected desktop/mobile Chromium scenarios; password visibility, inline feedback, recovery/Turnstile and wallet registration/login",
     "agent_permissions": "passed: admin-only agent CRUD/model discovery, mandatory published agent for members, configuration tamper resistance and tenant personal keys",
-    "agent_browser_permissions": "passed: eight affected scenarios across batch and targeted rerun"
+    "agent_browser_permissions": "passed: eight affected scenarios across batch and targeted rerun",
+    "domain_split": "passed: public landing and app-root routing, multilingual CTAs, legacy account links, 360px rendering; deployment requires authoritative DNS and app TLS"
   },
   "unverified": [
     "live exchange access and end-to-end latency",
