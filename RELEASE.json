@@ -2,7 +2,7 @@
   "name": "CryptoSight AI",
   "version": "1.10.0-rc.1",
   "validation": {
-    "unit_integration_passed": 136,
+    "unit_integration_passed": 137,
     "live_tests_skipped": 3,
     "strict_typescript": "passed",
     "production_build": "passed",
@@ -39,7 +39,7 @@
     "auth_panel": "passed: four affected desktop/mobile Chromium scenarios; password visibility, inline feedback, recovery/Turnstile and wallet registration/login",
     "agent_permissions": "passed: admin-only agent CRUD/model discovery, mandatory published agent for members, configuration tamper resistance and tenant personal keys",
     "agent_browser_permissions": "passed: eight affected scenarios across batch and targeted rerun",
-    "domain_split": "passed: public landing and app-root routing, multilingual CTAs, legacy account links, 360px rendering; deployment requires authoritative DNS and app TLS"
+    "domain_split": "passed: public/app hostname routing including reverse-proxy port reconstruction, multilingual CTAs, legacy account links and 360px rendering"
   },
   "unverified": [
     "live exchange access and end-to-end latency",

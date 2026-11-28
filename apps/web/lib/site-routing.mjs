@@ -39,3 +39,12 @@ export function siteRoute(requestUrl, appOrigin, publicOrigin) {
   }
   return null;
 }
+
+export function externalRequestUrl(rawUrl, host, forwardedProtocol) {
+  const original = new URL(rawUrl);
+  const protocol = forwardedProtocol === "https" ? "https:" : original.protocol;
+  return new URL(
+    original.pathname + original.search,
+    `${protocol}//${host || original.host}`,
+  );
+}

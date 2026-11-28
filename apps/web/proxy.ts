@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { matchPublicPath } from "./lib/public-routes";
 import { adSenseConfig } from "./lib/public-site";
 
-import { siteRoute } from "./lib/site-routing.mjs";
+import { siteRoute, externalRequestUrl } from "./lib/site-routing.mjs";
 
 export function proxy(request: NextRequest) {
-  const externalUrl = new URL(request.nextUrl.href);
-  externalUrl.host = request.headers.get("host") || externalUrl.host;
+  const externalUrl = externalRequestUrl(
+    request.nextUrl.href,
+    request.headers.get("host"),
+    request.headers.get("x-forwarded-proto"),
+  );
   const route = siteRoute(
     externalUrl.href,
     process.env.APP_ORIGIN,

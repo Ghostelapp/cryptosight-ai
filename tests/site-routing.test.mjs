@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { siteRoute } from "../apps/web/lib/site-routing.mjs";
+import {
+  siteRoute,
+  externalRequestUrl,
+} from "../apps/web/lib/site-routing.mjs";
 const app = "https://app.cryptosight.tech",
   pub = "https://cryptosight.tech";
 test("public homepage stays public while app root rewrites internally and keeps query", () => {
@@ -43,5 +46,19 @@ test("marketing translations on the app domain use the public canonical origin",
   assert.equal(
     siteRoute("http://127.0.0.1:3100/", "http://127.0.0.1:3100").kind,
     "rewrite",
+  );
+});
+
+test("TLS proxy host reconstruction drops the internal server port", () => {
+  const url = externalRequestUrl(
+    "http://web:3000/?lang=pl",
+    "app.cryptosight.tech",
+    "https",
+  );
+  assert.equal(url.href, "https://app.cryptosight.tech/?lang=pl");
+  assert.equal(siteRoute(url.href, app, pub).kind, "rewrite");
+  assert.equal(
+    externalRequestUrl("http://localhost:3100/", "127.0.0.1:3100", null).host,
+    "127.0.0.1:3100",
   );
 });
