@@ -116,3 +116,9 @@ Production build/strict TypeScript and OpenAPI/locale parity checks passed. This
 - Production build and strict TypeScript passed. Contracts regenerated for 87 paths / 108 operations.
 - The production scanner was blocked by Redis memory exhaustion from unbounded completed scheduler ticks. Removing only old completed technical ticks reduced memory from 256.10 MB to 2.88 MB and existing queued analyses resumed. User analysis/trade/account records were retained. Scheduler retention and worker heartbeat checks now prevent silent recurrence.
 - Real Resend delivery and Cloudflare Turnstile remain pending owner configuration. No real email was sent during validation. Use Administration → Integrations and the explicit test-email action. See AUTH-EMAIL-TURNSTILE.md and QUEUE-RETENTION.md.
+
+## 2026-11-28 — account panel redesign
+
+- Dedicated responsive account dialog: desktop brand/research panel and compact mobile form, explicit login/register switch, password visibility controls, collapsible wallet/2FA options and persistent inline auth/recovery feedback.
+- Four affected Chromium scenarios passed: desktop/mobile layout and password visibility/feedback, Turnstile registration/recovery/reset, real fixture-wallet registration/logout/login and missing-provider state. Desktop and 360px mobile screenshots visually inspected.
+- Backend service configuration and real email/Turnstile activation requirements remain as documented above.

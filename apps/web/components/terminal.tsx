@@ -1,5 +1,6 @@
 "use client";
 import { PageTabs, DisclosureCard } from "./page-sections";
+import { AuthDialog, AuthPasswordInput } from "./auth-dialog";
 import { TurnstileWidget } from "./turnstile-widget";
 import { ModelPicker } from "./model-picker";
 import { ResearchEvidence } from "./research-evidence";
@@ -157,6 +158,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     [user, setUser] = useState<any>(null),
     [configuration, setConfiguration] = useState<any>({}),
     [authOpen, setAuthOpen] = useState(false),
+    [authFeedback, setAuthFeedback] = useState({ text: "", error: false }),
     [oauthMfa, setOauthMfa] = useState(false),
     [register, setRegister] = useState(false),
     [authScreen, setAuthScreen] = useState<
@@ -400,6 +402,11 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
       return await fn();
     } catch (e: any) {
       error(e.message);
+      if (name === "auth")
+        setAuthFeedback({
+          text: t.has("err_" + e.message) ? t("err_" + e.message) : t("errors"),
+          error: true,
+        });
     } finally {
       setBusy("");
     }
@@ -885,7 +892,11 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
           : register
             ? "register"
             : "login";
+  useEffect(() => {
+    setAuthFeedback({ text: "", error: false });
+  }, [authOpen]);
   const authSubmit = async () => {
+    setAuthFeedback({ text: "", error: false });
     try {
       await perform("auth", async () => {
         if (oauthMfa) {
@@ -907,9 +918,10 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               : "auth/resend-verification",
             { method: "POST", body: { email, turnstileToken: captchaToken } },
           );
-          setToast(
-            t(authScreen === "forgot" ? "resetSent" : "verificationSent"),
-          );
+          setAuthFeedback({
+            text: t(authScreen === "forgot" ? "resetSent" : "verificationSent"),
+            error: false,
+          });
           return;
         }
         if (authScreen === "reset") {
@@ -940,7 +952,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
           },
         });
         if (r.verification_required) {
-          setToast(t("verificationRequired"));
+          setAuthFeedback({ text: t("verificationRequired"), error: false });
           setAuthScreen("resend");
           setRegister(false);
         } else {
@@ -3319,7 +3331,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
           {t("accept")}
         </Button>
       </Modal>
-      <Modal
+      <AuthDialog
         open={authOpen}
         onOpenChange={setAuthOpen}
         title={t(
@@ -3335,9 +3347,49 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                     ? "register"
                     : "login",
         )}
-        closeLabel={t("close")}
+        description={t(
+          oauthMfa
+            ? "authMfaDescription"
+            : authScreen === "forgot"
+              ? "authForgotDescription"
+              : authScreen === "resend"
+                ? "authResendDescription"
+                : authScreen === "reset"
+                  ? "authResetDescription"
+                  : register
+                    ? "authRegisterDescription"
+                    : "authLoginDescription",
+        )}
       >
+        {!oauthMfa && authScreen === "credentials" && (
+          <div className="auth-mode-switch" aria-label={t("authMethod")}>
+            <button
+              type="button"
+              aria-pressed={!register}
+              disabled={busy === "auth"}
+              onClick={() => {
+                setRegister(false);
+                setAuthFeedback({ text: "", error: false });
+              }}
+            >
+              {t("authLoginTab")}
+            </button>
+            <button
+              type="button"
+              aria-pressed={register}
+              disabled={busy === "auth"}
+              onClick={() => {
+                setRegister(true);
+                setAuthFeedback({ text: "", error: false });
+              }}
+            >
+              {t("authRegisterTab")}
+            </button>
+          </div>
+        )}
         <form
+          className="auth-form"
+          aria-busy={busy === "auth"}
           onSubmit={(e) => {
             e.preventDefault();
             authSubmit();
@@ -3352,6 +3404,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
+                  placeholder="you@example.com"
                 />
               </Field>
             </>
@@ -3362,9 +3415,8 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                 <Field
                   label={t(authScreen === "reset" ? "newPassword" : "password")}
                 >
-                  <input
+                  <AuthPasswordInput
                     required
-                    type="password"
                     minLength={register || authScreen === "reset" ? 12 : 1}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -3377,9 +3429,8 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                 </Field>
                 {authScreen === "reset" && (
                   <Field label={t("confirmPassword")}>
-                    <input
+                    <AuthPasswordInput
                       required
-                      type="password"
                       minLength={12}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
@@ -3390,24 +3441,31 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               </>
             )}
           {(oauthMfa || (!register && authScreen === "credentials")) && (
-            <Field label={t("totpCode")}>
-              <input
-                value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value)}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-              />
-            </Field>
+            <details className="auth-mfa" open={oauthMfa || undefined}>
+              <summary>{t("authMfaToggle")}</summary>
+              <Field label={t("totpCode")}>
+                <input
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value)}
+                  inputMode="numeric"
+                  maxLength={6}
+                  pattern="[0-9]{6}"
+                  autoComplete="one-time-code"
+                />
+              </Field>
+            </details>
           )}
           {register && authScreen === "credentials" && (
-            <p className="muted">{t("consentText")}</p>
+            <p className="auth-consent">{t("consentText")}</p>
           )}
           {!oauthMfa &&
             configuration.email === false &&
             (register ||
               authScreen === "forgot" ||
               authScreen === "resend") && (
-              <p role="status">{t("emailTemporarilyUnavailable")}</p>
+              <p className="auth-notice" role="status">
+                {t("emailTemporarilyUnavailable")}
+              </p>
             )}
           <TurnstileWidget
             active={authOpen && !oauthMfa && !!configuration.turnstile?.enabled}
@@ -3417,7 +3475,18 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
             locale={locale}
             onToken={setCaptchaToken}
           />
+          {authFeedback.text && (
+            <p
+              className={
+                "auth-notice" + (authFeedback.error ? " auth-notice-error" : "")
+              }
+              role={authFeedback.error ? "alert" : "status"}
+            >
+              {authFeedback.text}
+            </p>
+          )}
           <Button
+            className="auth-submit"
             disabled={
               busy === "auth" ||
               (!oauthMfa &&
@@ -3431,16 +3500,23 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
             }
             type="submit"
           >
-            {t(
-              authScreen === "reset"
-                ? "resetPassword"
-                : authScreen === "forgot"
-                  ? "sendResetLink"
-                  : authScreen === "resend"
-                    ? "resendVerification"
-                    : register
-                      ? "register"
-                      : "login",
+            {busy === "auth" ? (
+              <>
+                <LoaderCircle size={17} className="spin" />
+                {t("loading")}
+              </>
+            ) : (
+              t(
+                authScreen === "reset"
+                  ? "resetPassword"
+                  : authScreen === "forgot"
+                    ? "sendResetLink"
+                    : authScreen === "resend"
+                      ? "resendVerification"
+                      : register
+                        ? "register"
+                        : "login",
+              )
             )}
           </Button>
         </form>
@@ -3450,6 +3526,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               <button
                 className="text-button"
                 onClick={() => {
+                  setAuthFeedback({ text: "", error: false });
                   setAuthScreen("credentials");
                   setRegister(authScreen === "credentials" ? !register : false);
                 }}
@@ -3463,6 +3540,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               <button
                 className="text-button"
                 onClick={() => {
+                  setAuthFeedback({ text: "", error: false });
                   setRegister(false);
                   setAuthScreen("forgot");
                 }}
@@ -3473,6 +3551,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
             <button
               className="text-button"
               onClick={() => {
+                setAuthFeedback({ text: "", error: false });
                 setRegister(false);
                 setAuthScreen("resend");
               }}
@@ -3481,22 +3560,39 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
             </button>
           </>
         )}
-        {configuration.googleOAuth && !oauthMfa && (
-          <a className="button button-outline" href="/api/v1/auth/oauth/start">
-            {t("google")}
-          </a>
+        {authScreen === "credentials" && !oauthMfa && (
+          <div className="auth-divider">
+            <span>{t("authAlternative")}</span>
+          </div>
         )}
-        {!oauthMfa && (
-          <WalletAccess
-            chains={configuration.walletChains}
-            locale={locale}
-            onChanged={async () => {
-              await loadMe();
-              setAuthOpen(false);
-            }}
-          />
+        {configuration.googleOAuth &&
+          !oauthMfa &&
+          authScreen === "credentials" && (
+            <a
+              className="button button-outline"
+              href="/api/v1/auth/oauth/start"
+            >
+              {t("google")}
+            </a>
+          )}
+        {!oauthMfa && authScreen === "credentials" && (
+          <details className="auth-wallet">
+            <summary>
+              <Wallet size={17} />
+              {t("walletLogin")}
+              <ChevronDown size={15} />
+            </summary>
+            <WalletAccess
+              chains={configuration.walletChains}
+              locale={locale}
+              onChanged={async () => {
+                await loadMe();
+                setAuthOpen(false);
+              }}
+            />
+          </details>
         )}
-      </Modal>
+      </AuthDialog>
       <CommandPalette
         open={commandsOpen}
         onOpenChange={setCommandsOpen}

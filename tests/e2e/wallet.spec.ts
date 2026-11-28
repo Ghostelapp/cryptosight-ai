@@ -36,6 +36,7 @@ test("wallet registration, persistence, logout and login with an EIP-1193 provid
     .getByRole("button", { name: "Sign in", exact: true })
     .first()
     .click();
+  await page.locator(".auth-wallet > summary").click();
   const panel = page.getByTestId("wallet-access");
   await panel.getByRole("checkbox").check();
   await panel
@@ -61,6 +62,7 @@ test("wallet registration, persistence, logout and login with an EIP-1193 provid
     .getByRole("button", { name: "Sign in", exact: true })
     .first()
     .click();
+  await page.locator(".auth-wallet > summary").click();
   await page.getByTestId("wallet-access").getByRole("checkbox").check();
   await page
     .getByTestId("wallet-access")
@@ -93,6 +95,7 @@ test("missing wallet has a useful error state and disabled login", async ({
     .getByRole("button", { name: "Sign in", exact: true })
     .first()
     .click();
+  await page.locator(".auth-wallet > summary").click();
   await expect(page.getByTestId("wallet-access")).toContainText(
     "No wallet found",
   );
