@@ -1,6 +1,13 @@
 import { z } from "zod";
-import { mobileStart, mobileRequest, mobileAuthorize, mobileExchange } from "./mobile-auth.mjs";
+import {
+  mobileStart,
+  mobileRequest,
+  mobileAuthorize,
+  mobileExchange,
+} from "./mobile-auth.mjs";
 import { adminHandle } from "./admin.mjs";
+import { mailConfig, turnstileConfig } from "./integrations.mjs";
+import { verifyTurnstile } from "./turnstile.mjs";
 import {
   platformSettings,
   availableAgents,
@@ -165,9 +172,12 @@ export async function handle(req) {
         database: (await query("SELECT 1")).rows.length === 1,
         liveData: "provider-dependent",
       });
-    if (path === "auth/mobile/start" && method === "POST") return json(await mobileStart(req, body), 201);
-    if (path.startsWith("auth/mobile/request/") && method === "GET") return json(await mobileRequest(req, parts[3]));
-    if (path === "auth/mobile/exchange" && method === "POST") return json(await mobileExchange(req, body));
+    if (path === "auth/mobile/start" && method === "POST")
+      return json(await mobileStart(req, body), 201);
+    if (path.startsWith("auth/mobile/request/") && method === "GET")
+      return json(await mobileRequest(req, parts[3]));
+    if (path === "auth/mobile/exchange" && method === "POST")
+      return json(await mobileExchange(req, body));
     if (path === "auth/oauth/start" && method === "GET") return oauthStart(url);
     if (path === "auth/oauth/callback" && method === "GET")
       return oauthCallback(req);
@@ -362,13 +372,15 @@ export async function handle(req) {
     if (path === "auth/resend-verification") {
       const addr = emailSchema.parse(body.email);
       await rateLimit("resend:" + addr, 3, 3600);
+      await verifyTurnstile(req, body.turnstileToken, "resend_verification");
+      if (!(await mailConfig()).ready) throw new Error("email_not_configured");
       const u = (
         await take(
           "SELECT id,locale FROM users WHERE email=$1 AND email_verified=false",
           [addr],
         )
       )[0];
-      if (u && process.env.SMTP_URL) {
+      if (u) {
         const token = randomBytes(32).toString("hex");
         await query(
           "INSERT INTO auth_tokens(user_id,kind,token_hash,expires_at) VALUES($1,'verify',$2,now()+interval '1 day')",
@@ -396,7 +408,8 @@ export async function handle(req) {
         })
         .parse(body);
       await rateLimit(`register:${b.email}`, 5, 3600);
-      if (process.env.NODE_ENV === "production" && !process.env.SMTP_URL)
+      await verifyTurnstile(req, body.turnstileToken, "register");
+      if (process.env.NODE_ENV === "production" && !(await mailConfig()).ready)
         throw new Error("email_not_configured");
       const id = randomUUID(),
         verified = process.env.NODE_ENV !== "production";
@@ -442,6 +455,7 @@ export async function handle(req) {
         })
         .parse(body);
       await rateLimit(`login:${b.email}`, 10, 600);
+      await verifyTurnstile(req, body.turnstileToken, "login");
       const u = (
         await take(
           "SELECT * FROM users WHERE email=$1 AND deleted_at IS NULL",
@@ -478,10 +492,15 @@ export async function handle(req) {
     if (path === "auth/reset-request" && method === "POST") {
       const addr = emailSchema.parse(body.email);
       await rateLimit(`reset:${addr}`, 3, 3600);
+      await verifyTurnstile(req, body.turnstileToken, "reset_request");
+      if (!(await mailConfig()).ready) throw new Error("email_not_configured");
       const u = (
-        await take("SELECT id,locale FROM users WHERE email=$1", [addr])
+        await take(
+          "SELECT id,locale FROM users WHERE email=$1 AND deleted_at IS NULL AND password_hash IS NOT NULL",
+          [addr],
+        )
       )[0];
-      if (u && process.env.SMTP_URL) {
+      if (u) {
         const token = randomBytes(32).toString("hex");
         await query(
           "INSERT INTO auth_tokens(user_id,kind,token_hash,expires_at) VALUES($1,'reset',$2,now()+interval '30 minutes')",
@@ -501,19 +520,24 @@ export async function handle(req) {
       const b = z
         .object({ token: z.string().length(64), password: pass })
         .parse(body);
+      await verifyTurnstile(req, body.turnstileToken, "reset");
       await transaction(async (tx) => {
         const r = await tx.query(
           "DELETE FROM auth_tokens WHERE token_hash=$1 AND kind='reset' AND expires_at>now() RETURNING user_id",
           [hash(b.token)],
         );
         if (!r.rows[0]) throw new Error("invalid_token");
-        await tx.query("UPDATE users SET password_hash=$1 WHERE id=$2", [
-          await passwordHash(b.password),
-          r.rows[0].user_id,
-        ]);
+        await tx.query(
+          "UPDATE users SET password_hash=$1,email_verified=true WHERE id=$2 AND deleted_at IS NULL",
+          [await passwordHash(b.password), r.rows[0].user_id],
+        );
         await tx.query("DELETE FROM sessions WHERE user_id=$1", [
           r.rows[0].user_id,
         ]);
+        await tx.query(
+          "DELETE FROM auth_tokens WHERE user_id=$1 AND kind='reset'",
+          [r.rows[0].user_id],
+        );
       });
       return json({ reset: true });
     }
@@ -531,7 +555,16 @@ export async function handle(req) {
           aiEnabled: (await platformSettings()).ai_enabled,
           walletChains: walletChains(),
           googleOAuth: !!process.env.GOOGLE_CLIENT_ID,
-          email: !!process.env.SMTP_URL,
+          email:
+            process.env.NODE_ENV !== "production" || (await mailConfig()).ready,
+          turnstile: await (async () => {
+            const c = await turnstileConfig();
+            return {
+              enabled: c.enabled,
+              ready: c.ready,
+              siteKey: c.ready ? c.siteKey : null,
+            };
+          })(),
           byok: !!process.env.BYOK_ENCRYPTION_KEY,
           billing: !!process.env.STRIPE_PRICE_ID,
           pushKey: process.env.VAPID_PUBLIC_KEY || null,
@@ -544,7 +577,8 @@ export async function handle(req) {
     const uid = user.id;
     if (parts[0] === "admin")
       return json(await adminHandle(user, path, method, body, params));
-    if (path === "auth/mobile/authorize" && method === "POST") return json(await mobileAuthorize(user, body));
+    if (path === "auth/mobile/authorize" && method === "POST")
+      return json(await mobileAuthorize(user, body));
     if (path === "agents") return json(await availableAgents(user));
     if (mutation)
       await audit(uid, "attempt." + method.toLowerCase() + "." + parts[0]);
@@ -568,7 +602,11 @@ export async function handle(req) {
       await query("DELETE FROM sessions WHERE token_hash=$1", [
         hash(sessionToken(req)),
       ]);
-      return json({ logged_out: true }, 200, mobileToken(req) ? {} : { "set-cookie": clearSession() });
+      return json(
+        { logged_out: true },
+        200,
+        mobileToken(req) ? {} : { "set-cookie": clearSession() },
+      );
     }
     if (path === "settings") {
       if (method === "GET")
@@ -640,33 +678,41 @@ export async function handle(req) {
       return json({ accepted: true });
     }
     if (path === "models") {
-      const b = z.object({
-        provider: z.enum(providers),
-        key: z.string().trim().min(8).max(1000).optional(),
-        agentId: uuid.optional(),
-      }).parse(method === "GET"
-        ? { provider: params.provider, agentId: params.agentId }
-        : body);
+      const b = z
+        .object({
+          provider: z.enum(providers),
+          key: z.string().trim().min(8).max(1000).optional(),
+          agentId: uuid.optional(),
+        })
+        .parse(
+          method === "GET"
+            ? { provider: params.provider, agentId: params.agentId }
+            : body,
+        );
       await rateLimit(`model-catalog:${uid}`, 30, 60);
       let key = b.key;
       if (!key && b.agentId) {
         if (user.role !== "admin") throw new Error("admin_required");
-        const agent = (await take(
-          "SELECT id,provider,key_envelope FROM platform_agents WHERE id=$1",
-          [b.agentId],
-        ))[0];
+        const agent = (
+          await take(
+            "SELECT id,provider,key_envelope FROM platform_agents WHERE id=$1",
+            [b.agentId],
+          )
+        )[0];
         if (!agent || agent.provider !== b.provider)
           throw new Error("not_found");
-        if (b.provider === "local")
-          key = process.env.LOCAL_LLM_KEY || "local";
+        if (b.provider === "local") key = process.env.LOCAL_LLM_KEY || "local";
         else if (agent.key_envelope)
           key = decryptKey(agent.key_envelope, rootKey(), {
-            userId: agent.id, provider: "platform:" + b.provider,
+            userId: agent.id,
+            provider: "platform:" + b.provider,
           });
         else throw new Error("credential_required");
       }
       key ||= await credential(uid, b.provider);
-      return json(await listModels(b.provider, key), 200, { "cache-control": "no-store" });
+      return json(await listModels(b.provider, key), 200, {
+        "cache-control": "no-store",
+      });
     }
     if (parts[0] === "credentials") {
       if (method === "GET")
@@ -1395,12 +1441,20 @@ export async function handle(req) {
       return json(job, 202);
     }
     if (path === "scanner/candidates") {
-      const config = instrument.pick({venue:true,market:true,timeframe:true}).extend({
-        minVolume:z.coerce.number().finite().min(1000000).max(1e12).default(10000000),
-        limit:z.coerce.number().int().min(5).max(30).default(24),
-        direction:z.enum(["all","LONG","SHORT"]).default("all"),
-      }).parse(params);
-      await rateLimit(`candidate-scan:${uid}`,3,60);
+      const config = instrument
+        .pick({ venue: true, market: true, timeframe: true })
+        .extend({
+          minVolume: z.coerce
+            .number()
+            .finite()
+            .min(1000000)
+            .max(1e12)
+            .default(10000000),
+          limit: z.coerce.number().int().min(5).max(30).default(24),
+          direction: z.enum(["all", "LONG", "SHORT"]).default("all"),
+        })
+        .parse(params);
+      await rateLimit(`candidate-scan:${uid}`, 3, 60);
       return json(await candidateScan(config));
     }
     if (path === "scanner" && method === "POST") {
@@ -1411,6 +1465,15 @@ export async function handle(req) {
           agentId: uuid.optional(),
           locale: z.enum(["en", "pl", "de"]),
           timeframe: instrument.shape.timeframe,
+          timeframes: z
+            .array(instrument.shape.timeframe)
+            .min(1)
+            .max(3)
+            .refine((v) => new Set(v).size === v.length)
+            .optional(),
+          venue: instrument.shape.venue,
+          market: instrument.shape.market,
+          mode: z.enum(["deep", "quick"]).default("deep"),
         })
         .parse(body);
       if (
@@ -1423,62 +1486,116 @@ export async function handle(req) {
         .max(150)
         .parse(req.headers.get("idempotency-key"));
       const items = await take(
-          "SELECT wi.* FROM watchlist_items wi JOIN watchlists w ON w.id=wi.watchlist_id WHERE w.user_id=$1 ORDER BY wi.symbol LIMIT 5",
-          [uid],
+          "SELECT DISTINCT wi.venue,wi.market,wi.symbol FROM watchlist_items wi JOIN watchlists w ON w.id=wi.watchlist_id WHERE w.user_id=$1 AND wi.venue=$2 AND wi.market=$3 ORDER BY wi.symbol LIMIT 5",
+          [uid, b.venue, b.market],
         ),
         jobs = [];
-      for (const wi of items) {
-        try {
-          jobs.push({
-            symbol: wi.symbol,
-            ...(await queueAnalysis(
-              user,
-              {
-                ...b,
-                venue: wi.venue,
-                market: wi.market,
-                symbol: wi.symbol,
-                mode: "quick",
-              },
-              key + ":" + wi.symbol,
-            )),
-          });
-        } catch (e) {
-          jobs.push({
-            symbol: wi.symbol,
-            error: ["daily_limit", "credential_required"].includes(e.message)
-              ? e.message
-              : "service_unavailable",
-          });
+      const frames = b.timeframes || [b.timeframe],
+        { timeframes: unused, ...shared } = b;
+      for (const wi of items)
+        for (const timeframe of frames) {
+          try {
+            jobs.push({
+              symbol: wi.symbol,
+              venue: wi.venue,
+              market: wi.market,
+              timeframe,
+              ...(await queueAnalysis(
+                user,
+                {
+                  ...shared,
+                  venue: wi.venue,
+                  market: wi.market,
+                  symbol: wi.symbol,
+                  timeframe,
+                  mode: b.mode,
+                  purpose: "watchlist_scan",
+                },
+                key +
+                  ":" +
+                  wi.venue +
+                  ":" +
+                  wi.market +
+                  ":" +
+                  wi.symbol +
+                  ":" +
+                  timeframe,
+              )),
+            });
+          } catch (e) {
+            jobs.push({
+              symbol: wi.symbol,
+              venue: wi.venue,
+              market: wi.market,
+              timeframe,
+              status: "failed",
+              error: [
+                "daily_limit",
+                "credential_required",
+                "ai_paused",
+                "agent_unavailable",
+                "invalid_provider",
+                "local_provider_not_configured",
+              ].includes(e.message)
+                ? e.message
+                : "service_unavailable",
+            });
+          }
         }
-      }
       return json(
-        { jobs, max_coins: 5, estimated_cost_per_coin: estimate() },
+        {
+          jobs,
+          max_coins: 5,
+          frames,
+          enqueued: jobs.filter((j) => j.id).length,
+          estimated_cost_per_analysis: estimate(),
+        },
         202,
       );
     }
     if (path === "scanner" && params.mode === "ai") {
+      const ids = params.ids
+        ? z.array(uuid).min(1).max(15).parse(params.ids.split(","))
+        : null;
+      const venue = params.venue
+          ? instrument.shape.venue.parse(params.venue)
+          : null,
+        market = params.market
+          ? instrument.shape.market.parse(params.market)
+          : null;
       const rows = await take(
-        "SELECT DISTINCT ON (a.request_config->>'symbol') a.id,a.result,a.created_at,a.request_config FROM analyses a WHERE a.user_id=$1 AND a.status='completed' AND EXISTS(SELECT 1 FROM watchlist_items wi JOIN watchlists w ON w.id=wi.watchlist_id WHERE w.user_id=$1 AND wi.symbol=a.request_config->>'symbol' AND wi.venue=a.request_config->>'venue' AND wi.market=a.request_config->>'market') ORDER BY a.request_config->>'symbol',a.created_at DESC",
-        [uid],
+        "SELECT DISTINCT ON (a.request_config->>'venue',a.request_config->>'market',a.request_config->>'symbol',a.request_config->>'timeframe') a.id,a.status,a.error_code,a.result,a.created_at,a.request_config FROM analyses a WHERE a.user_id=$1 AND ($2::uuid[] IS NULL OR a.id=ANY($2::uuid[])) AND ($3::text IS NULL OR a.request_config->>'venue'=$3) AND ($4::text IS NULL OR a.request_config->>'market'=$4) AND EXISTS(SELECT 1 FROM watchlist_items wi JOIN watchlists w ON w.id=wi.watchlist_id WHERE w.user_id=$1 AND wi.symbol=a.request_config->>'symbol' AND wi.venue=a.request_config->>'venue' AND wi.market=a.request_config->>'market') ORDER BY a.request_config->>'venue',a.request_config->>'market',a.request_config->>'symbol',a.request_config->>'timeframe',a.created_at DESC LIMIT 100",
+        [uid, ids, venue, market],
       );
       return json(
         rows
           .map((r) => {
-            const setup = r.result.setups.find(
+            const setup = r.result?.setups.find(
               (s) => s.direction !== "NO_TRADE",
             );
             return {
               analysisId: r.id,
+              id: r.id,
+              status: r.status,
+              error: r.error_code,
               symbol: r.request_config.symbol,
-              direction: setup?.direction || "NO_TRADE",
-              score: setup
-                ? r.result.confidence *
-                  Math.min(setup.risk_reward, 5) *
-                  { low: 1, medium: 0.8, high: 0.5, extreme: 0.2 }[
-                    r.result.risk.level
-                  ]
-                : 0,
+              venue: r.request_config.venue,
+              market: r.request_config.market,
+              timeframe: r.request_config.timeframe,
+              direction:
+                r.status === "completed"
+                  ? setup?.direction || "NO_TRADE"
+                  : null,
+              score:
+                r.status !== "completed"
+                  ? null
+                  : setup
+                    ? r.result.confidence *
+                      Math.min(setup.risk_reward, 5) *
+                      { low: 1, medium: 0.8, high: 0.5, extreme: 0.2 }[
+                        r.result.risk.level
+                      ]
+                    : 0,
               scoreType: "subjective_llm_confidence_times_rr_risk_weight",
               timestamp: r.created_at,
               stale: Date.now() - +new Date(r.created_at) > 3600000,
@@ -1630,6 +1747,9 @@ export async function handle(req) {
           ? "already_exists"
           : e.message || "server_error";
     const known = [
+      "captcha_required",
+      "captcha_failed",
+      "integration_not_configured",
       "invalid_agent",
       "invalid_admin_request",
       "invalid_instrument",
@@ -1639,6 +1759,7 @@ export async function handle(req) {
       "invalid_provider",
       "invalid_timezone",
       "invalid_login",
+      "email_verification_required",
       "wallet_chain_unsupported",
       "wallet_address_invalid",
       "wallet_signature_invalid",
@@ -1660,7 +1781,9 @@ export async function handle(req) {
       "provider_key_rejected",
     ];
     const status =
-      code === "authentication_required" || code === "wallet_challenge_invalid" || code === "mobile_login_failed"
+      code === "authentication_required" ||
+      code === "wallet_challenge_invalid" ||
+      code === "mobile_login_failed"
         ? 401
         : [
               "csrf_failed",
@@ -1703,6 +1826,8 @@ export async function handle(req) {
             "ai_paused",
             "agent_unavailable",
             "email_not_configured",
+            "email_delivery_failed",
+            "captcha_unavailable",
             "encryption_not_configured",
             "database_not_configured",
             "billing_not_configured",

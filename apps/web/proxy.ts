@@ -10,7 +10,7 @@ export function proxy(request: NextRequest) {
     const u = new URL(gateway);
     if (["ws:", "wss:"].includes(u.protocol)) gatewayOrigin = u.origin;
   } catch {}
-  const csp = `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' wss://stream.binance.com:9443 wss://fstream.binance.com wss://stream.bybit.com wss://ws.okx.com ${gatewayOrigin}${dev ? " ws://localhost:* ws://127.0.0.1:*" : ""}; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`;
+  const csp = `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://challenges.cloudflare.com${dev ? " 'unsafe-eval'" : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://challenges.cloudflare.com wss://stream.binance.com:9443 wss://fstream.binance.com wss://stream.bybit.com wss://ws.okx.com ${gatewayOrigin}${dev ? " ws://localhost:* ws://127.0.0.1:*" : ""}; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`;
   const headers = new Headers(request.headers);
   headers.set("x-nonce", nonce);
   headers.set("Content-Security-Policy", csp);

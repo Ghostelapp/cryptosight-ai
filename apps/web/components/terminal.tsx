@@ -1,7 +1,9 @@
 "use client";
 import { PageTabs, DisclosureCard } from "./page-sections";
+import { TurnstileWidget } from "./turnstile-widget";
 import { ModelPicker } from "./model-picker";
 import { ResearchEvidence } from "./research-evidence";
+import { WatchlistAIScanner } from "./watchlist-ai-scanner";
 import { CandidateScanner } from "./candidate-scanner";
 import { AIChartGuide } from "./ai-chart-guide";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -157,6 +159,13 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     [authOpen, setAuthOpen] = useState(false),
     [oauthMfa, setOauthMfa] = useState(false),
     [register, setRegister] = useState(false),
+    [authScreen, setAuthScreen] = useState<
+      "credentials" | "forgot" | "reset" | "resend"
+    >("credentials"),
+    [resetToken, setResetToken] = useState(""),
+    [confirmPassword, setConfirmPassword] = useState(""),
+    [captchaToken, setCaptchaToken] = useState(""),
+    [captchaRevision, setCaptchaRevision] = useState(0),
     [consentOpen, setConsentOpen] = useState(false),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
@@ -285,6 +294,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
   const setRecords = (rows: any[]) =>
     setRecordState({ tab, userId: user?.id ?? "", rows });
   const chartRef = useRef<any>(null),
+    pendingAnalysisOpen = useRef<any>(null),
     analysisInterval = useRef<any>(null);
   const applyWorkspace = (value: unknown) => {
     const saved = normalizeWorkspace(value, [
@@ -483,6 +493,8 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     if (sp.get("reset")) {
       setAuthOpen(true);
       setRegister(false);
+      setResetToken(sp.get("reset") || "");
+      setAuthScreen("reset");
     }
   }, []);
   useEffect(() => {
@@ -496,6 +508,18 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
     setAISetupIndex(0);
     setAnalysisId("");
     setAnalysisStatus("");
+    const pending = pendingAnalysisOpen.current;
+    if (
+      pending &&
+      pending.venue === instrument.venue &&
+      pending.market === instrument.market &&
+      pending.symbol === instrument.symbol &&
+      pending.timeframe === instrument.timeframe
+    ) {
+      setAnalysisId(pending.analysisId || pending.id);
+      setAnalysisStatus("completed");
+      pendingAnalysisOpen.current = null;
+    }
     setData(null);
     setBook(null);
     setChatMessages([]);
@@ -851,42 +875,86 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
       }),
     ),
   ];
-  const authSubmit = () =>
-    perform("auth", async () => {
-      if (oauthMfa) {
-        await api("auth/oauth/verify-totp", {
+  const captchaAction =
+    authScreen === "forgot"
+      ? "reset_request"
+      : authScreen === "resend"
+        ? "resend_verification"
+        : authScreen === "reset"
+          ? "reset"
+          : register
+            ? "register"
+            : "login";
+  const authSubmit = async () => {
+    try {
+      await perform("auth", async () => {
+        if (oauthMfa) {
+          await api("auth/oauth/verify-totp", {
+            method: "POST",
+            body: { code: totpCode },
+          });
+          setOauthMfa(false);
+          history.replaceState({}, "", location.pathname);
+          await loadMe();
+          setAuthOpen(false);
+          setTotpCode("");
+          return;
+        }
+        if (authScreen === "forgot" || authScreen === "resend") {
+          await api(
+            authScreen === "forgot"
+              ? "auth/reset-request"
+              : "auth/resend-verification",
+            { method: "POST", body: { email, turnstileToken: captchaToken } },
+          );
+          setToast(
+            t(authScreen === "forgot" ? "resetSent" : "verificationSent"),
+          );
+          return;
+        }
+        if (authScreen === "reset") {
+          if (password !== confirmPassword)
+            throw new Error("password_mismatch");
+          await api("auth/reset", {
+            method: "POST",
+            body: { token: resetToken, password, turnstileToken: captchaToken },
+          });
+          history.replaceState({}, "", location.pathname);
+          setToast(t("passwordResetDone"));
+          setPassword("");
+          setConfirmPassword("");
+          setResetToken("");
+          setAuthScreen("credentials");
+          setAuthOpen(false);
+          return;
+        }
+        const r = await api("auth/" + (register ? "register" : "login"), {
           method: "POST",
-          body: { code: totpCode },
+          body: {
+            email,
+            password,
+            totp: totpCode,
+            locale,
+            consent: true,
+            turnstileToken: captchaToken,
+          },
         });
-        setOauthMfa(false);
-        history.replaceState({}, "", location.pathname);
-        await loadMe();
-        setAuthOpen(false);
+        if (r.verification_required) {
+          setToast(t("verificationRequired"));
+          setAuthScreen("resend");
+          setRegister(false);
+        } else {
+          await loadMe();
+          setAuthOpen(false);
+        }
+        setPassword("");
         setTotpCode("");
-        return;
-      }
-      const reset = new URLSearchParams(location.search).get("reset");
-      if (reset) {
-        await api("auth/reset", {
-          method: "POST",
-          body: { token: reset, password },
-        });
-        history.replaceState({}, "", location.pathname);
-        setToast(t("saved"));
-        return;
-      }
-      const r = await api("auth/" + (register ? "register" : "login"), {
-        method: "POST",
-        body: { email, password, totp: totpCode, locale, consent: true },
       });
-      if (r.verification_required) setToast(t("verificationRequired"));
-      else {
-        await loadMe();
-        setAuthOpen(false);
-      }
-      setPassword("");
-      setTotpCode("");
-    });
+    } finally {
+      setCaptchaToken("");
+      setCaptchaRevision((v) => v + 1);
+    }
+  };
   const exportPdf = () =>
     perform("pdf", async () => {
       const r = await fetch("/api/v1/reports", {
@@ -2138,66 +2206,34 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                       setTab("terminal");
                     }}
                   />
-                  <div className="form-card">
-                    <h2>{t("watchlistScans")}</h2>
-                    <p className="muted">{t("watchlistScansHint")}</p>
-                    <div className="form-row">
-                      <Button
-                        onClick={() => {
-                          if (!protect()) return;
-                          perform("scanner", async () =>
-                            setScanner(await api("scanner")),
-                          );
-                        }}
-                      >
-                        {t("scan")}
-                      </Button>
-                    </div>
-                    <div className="form-grid">
-                      {providerControls}
-                      <Button
-                        onClick={() => {
-                          if (!protect()) return;
-                          perform("scanner", async () => {
-                            await api("scanner", {
-                              method: "POST",
-                              body: {
-                                ...aiConfig(),
-                                timeframe: instrument.timeframe,
-                              },
-                              headers: {
-                                "idempotency-key": crypto.randomUUID(),
-                              },
-                            });
-                            setToast(t("scanQueued"));
-                          });
-                        }}
-                      >
-                        {t("aiScan")}
-                      </Button>
-                      <Button
-                        onClick={() =>
-                          perform("scanner", async () =>
-                            setScanner(await api("scanner?mode=ai")),
-                          )
-                        }
-                      >
-                        {t("scanResults")}
-                      </Button>
-                    </div>
-                    <p className="muted">{t("scoreHint")}</p>
-                    {scanner.length > 0 &&
-                      table(
-                        [t("symbol"), t("score"), t("direction"), "RSI", "ADX"],
-                        scanner.map((r) => [
-                          r.symbol,
-                          fmt(r.score),
-                          r.direction || "—",
-                          fmt(r.indicators?.RSI),
-                          fmt(r.indicators?.ADX?.adx),
-                        ]),
-                      )}
-                  </div>
+                  <WatchlistAIScanner
+                    instrument={instrument}
+                    config={aiConfig()}
+                    controls={providerControls}
+                    enabled={!!user}
+                    reservation={configuration.analysisReservation}
+                    protect={protect}
+                    onOpen={(row) => {
+                      const same = [
+                        "venue",
+                        "market",
+                        "symbol",
+                        "timeframe",
+                      ].every((key) => row[key] === (instrument as any)[key]);
+                      if (!same) pendingAnalysisOpen.current = row;
+                      updateInstrument({
+                        venue: row.venue,
+                        market: row.market,
+                        symbol: row.symbol,
+                        timeframe: row.timeframe,
+                      });
+                      setTab("terminal");
+                      if (same) {
+                        setAnalysisId(row.analysisId || row.id);
+                        setAnalysisStatus("completed");
+                      }
+                    }}
+                  />
                 </PageTabs>
               )}
               {!user &&
@@ -3286,7 +3322,19 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
       <Modal
         open={authOpen}
         onOpenChange={setAuthOpen}
-        title={t(oauthMfa ? "oauthMfa" : register ? "register" : "login")}
+        title={t(
+          oauthMfa
+            ? "oauthMfa"
+            : authScreen === "reset"
+              ? "newPassword"
+              : authScreen === "forgot"
+                ? "forgot"
+                : authScreen === "resend"
+                  ? "resendVerification"
+                  : register
+                    ? "register"
+                    : "login",
+        )}
         closeLabel={t("close")}
       >
         <form
@@ -3295,7 +3343,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
             authSubmit();
           }}
         >
-          {!oauthMfa && (
+          {!oauthMfa && authScreen !== "reset" && (
             <>
               <Field label={t("email")}>
                 <input
@@ -3306,19 +3354,42 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                   autoComplete="email"
                 />
               </Field>
-              <Field label={t("password")}>
-                <input
-                  required
-                  type="password"
-                  minLength={register ? 12 : 1}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete={register ? "new-password" : "current-password"}
-                />
-              </Field>
             </>
           )}
-          {!register && (
+          {!oauthMfa &&
+            (authScreen === "credentials" || authScreen === "reset") && (
+              <>
+                <Field
+                  label={t(authScreen === "reset" ? "newPassword" : "password")}
+                >
+                  <input
+                    required
+                    type="password"
+                    minLength={register || authScreen === "reset" ? 12 : 1}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete={
+                      register || authScreen === "reset"
+                        ? "new-password"
+                        : "current-password"
+                    }
+                  />
+                </Field>
+                {authScreen === "reset" && (
+                  <Field label={t("confirmPassword")}>
+                    <input
+                      required
+                      type="password"
+                      minLength={12}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </Field>
+                )}
+              </>
+            )}
+          {(oauthMfa || (!register && authScreen === "credentials")) && (
             <Field label={t("totpCode")}>
               <input
                 value={totpCode}
@@ -3328,9 +3399,49 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
               />
             </Field>
           )}
-          {register && <p className="muted">{t("consentText")}</p>}
-          <Button disabled={busy === "auth"} type="submit">
-            {t(register ? "register" : "login")}
+          {register && authScreen === "credentials" && (
+            <p className="muted">{t("consentText")}</p>
+          )}
+          {!oauthMfa &&
+            configuration.email === false &&
+            (register ||
+              authScreen === "forgot" ||
+              authScreen === "resend") && (
+              <p role="status">{t("emailTemporarilyUnavailable")}</p>
+            )}
+          <TurnstileWidget
+            active={authOpen && !oauthMfa && !!configuration.turnstile?.enabled}
+            siteKey={configuration.turnstile?.siteKey}
+            action={captchaAction}
+            revision={captchaRevision}
+            locale={locale}
+            onToken={setCaptchaToken}
+          />
+          <Button
+            disabled={
+              busy === "auth" ||
+              (!oauthMfa &&
+                configuration.turnstile?.enabled &&
+                !captchaToken) ||
+              (!oauthMfa &&
+                configuration.email === false &&
+                (register ||
+                  authScreen === "forgot" ||
+                  authScreen === "resend"))
+            }
+            type="submit"
+          >
+            {t(
+              authScreen === "reset"
+                ? "resetPassword"
+                : authScreen === "forgot"
+                  ? "sendResetLink"
+                  : authScreen === "resend"
+                    ? "resendVerification"
+                    : register
+                      ? "register"
+                      : "login",
+            )}
           </Button>
         </form>
         {!oauthMfa && (
@@ -3338,36 +3449,33 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
             <div className="auth-links">
               <button
                 className="text-button"
-                onClick={() => setRegister(!register)}
+                onClick={() => {
+                  setAuthScreen("credentials");
+                  setRegister(authScreen === "credentials" ? !register : false);
+                }}
               >
-                {t(register ? "login" : "register")}
+                {t(
+                  authScreen === "credentials" && !register
+                    ? "register"
+                    : "login",
+                )}
               </button>
               <button
                 className="text-button"
-                onClick={() =>
-                  perform("reset", async () => {
-                    await api("auth/reset-request", {
-                      method: "POST",
-                      body: { email },
-                    });
-                    setToast(t("resetSent"));
-                  })
-                }
+                onClick={() => {
+                  setRegister(false);
+                  setAuthScreen("forgot");
+                }}
               >
                 {t("forgot")}
               </button>
             </div>
             <button
               className="text-button"
-              onClick={() =>
-                perform("verify", async () => {
-                  await api("auth/resend-verification", {
-                    method: "POST",
-                    body: { email },
-                  });
-                  setToast(t("verificationSent"));
-                })
-              }
+              onClick={() => {
+                setRegister(false);
+                setAuthScreen("resend");
+              }}
             >
               {t("resendVerification")}
             </button>

@@ -22,11 +22,14 @@ if (!process.env.DATABASE_URL)
     "Separate worker requires PostgreSQL. Embedded development uses the web-process worker.",
   );
 let paperBusy = false;
+let lastPaperTick = 0,
+  lastAnalysisTick = 0;
 async function paperMaintenance() {
   if (paperBusy) return;
   paperBusy = true;
   try {
     const result = await paperTick();
+    lastPaperTick = Date.now();
     failures += result.failures;
   } catch {
     failures++;
@@ -42,6 +45,7 @@ let analyses = 0,
 async function analysisTick() {
   try {
     const job = await claimAnalysis();
+    lastAnalysisTick = Date.now();
     if (!job) return;
     analyses++;
     try {
@@ -82,19 +86,36 @@ if (process.env.REDIS_URL) {
   const connection = new Redis(process.env.REDIS_URL, {
     maxRetriesPerRequest: null,
   });
+  connection.on("error", () => {
+    failures++;
+    recordFailure("worker_redis", randomUUID());
+  });
   for (const [name, every, fn, concurrency] of [
     ["cryptosight-analysis", 1000, analysisTick, 4],
     ["cryptosight-maintenance", 10000, maintenance, 1],
     ["cryptosight-paper", 5000, paperMaintenance, 1],
   ]) {
-    const queue = new Queue(name, { connection });
+    const retention = {
+      removeOnComplete: { age: 3600, count: 1000 },
+      removeOnFail: { age: 86400, count: 500 },
+    };
+    const queue = new Queue(name, {
+      connection,
+      defaultJobOptions: retention,
+      streams: { events: { maxLen: 1000 } },
+    });
     queues.push(queue);
     await queue.upsertJobScheduler(
       "tick",
       { every },
-      { name: "tick", data: {} },
+      { name: "tick", data: {}, opts: retention },
     );
-    workers.push(new Worker(name, fn, { connection, concurrency }));
+    const worker = new Worker(name, fn, { connection, concurrency });
+    worker.on("error", () => {
+      failures++;
+      recordFailure("worker_queue", randomUUID());
+    });
+    workers.push(worker);
   }
 } else {
   setInterval(paperMaintenance, 5000);
@@ -104,13 +125,22 @@ if (process.env.REDIS_URL) {
   await maintenance();
 }
 const server = createServer((req, res) => {
-  res.writeHead(200, {
+  const healthy =
+    (analyses > 0 || Date.now() - lastAnalysisTick < 30000) &&
+    Date.now() - lastPaperTick < 45000;
+  res.writeHead(req.url === "/metrics" || healthy ? 200 : 503, {
     "content-type": req.url === "/metrics" ? "text/plain" : "application/json",
   });
   res.end(
     req.url === "/metrics"
       ? `cryptosight_worker_failures_total ${failures}\ncryptosight_analyses_running ${analyses}\ncryptosight_maintenance_busy ${Number(maintenanceBusy)}\n`
-      : JSON.stringify({ status: "ok", analyses, lastTick }),
+      : JSON.stringify({
+          status: healthy ? "ok" : "degraded",
+          analyses,
+          lastTick,
+          lastAnalysisTick,
+          lastPaperTick,
+        }),
   );
 }).listen(Number(process.env.WORKER_PORT || 3002));
 async function stop() {

@@ -1,16 +1,11 @@
 import { messages } from "./localization.mjs";
-import nodemailer from "nodemailer";
+import {email} from './mail.mjs';
+export {email} from './mail.mjs';
 import Parser from "rss-parser";
 import { query, transaction } from "./store.mjs";
 import { history } from "../market/providers.mjs";
 import { indicators } from "../quant/indicators.mjs";
 import { queueAnalysis } from "./jobs.mjs";
-export async function email(to, subject, text) {
-  if (!process.env.SMTP_URL || !process.env.EMAIL_FROM)
-    throw new Error("email_not_configured");
-  const mailer = nodemailer.createTransport(process.env.SMTP_URL);
-  await mailer.sendMail({ from: process.env.EMAIL_FROM, to, subject, text });
-}
 export async function news() {
   if (!process.env.NEWS_RSS_URL)
     return { items: [], unavailableReason: "news_not_configured" };

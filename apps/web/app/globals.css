@@ -2364,3 +2364,14 @@ kbd {
   .feature-page .journal-insights .stat strong { font-size:15px; }
   .feature-page .page-title > .button { flex-shrink:0; }
 }
+
+.ai-scan-frames { display:flex; flex-wrap:wrap; gap:8px; border:1px solid var(--border); border-radius:8px; padding:10px; margin:12px 0; }
+.ai-scan-frames legend { padding:0 5px; font-size:12px; }
+.ai-scan-frames label { display:inline-flex; align-items:center; gap:6px; padding:6px 8px; margin:0; border:1px solid var(--border); border-radius:6px; cursor:pointer; }
+.ai-scan-frames input { width:16px; height:16px; margin:0; accent-color:var(--accent); }
+.feature-page .ai-batch-results table { min-width:660px; table-layout:auto; }
+.feature-page .ai-batch-results td { overflow-wrap:normal; word-break:normal; }
+.ai-batch-results td:first-child { min-width:125px; }
+.ai-batch-results td:nth-child(3) { min-width:160px; max-width:240px; }
+.ai-batch-results td small { display:block; }
+.turnstile-area { max-width:100%; margin:12px 0; }

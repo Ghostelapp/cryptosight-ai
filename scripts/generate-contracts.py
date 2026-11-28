@@ -46,6 +46,9 @@ route('/auth/resend-verification','post',O({'email':S(format='email')},['email']
 route('/auth/register','post',O({'email':S(format='email'),'password':S(minLength=12,maxLength=128),'locale':locale,'consent':{'const':True}},['email','password','consent']),public=True,status=201)
 route('/auth/login','post',O({'email':S(format='email'),'password':S(maxLength=128),'totp':S(maxLength=10)},['email','password']),public=True)
 for p,b in [('verify',O({'token':S(minLength=64,maxLength=64)},['token'])),('reset-request',O({'email':S(format='email')},['email'])),('reset',O({'token':S(minLength=64,maxLength=64),'password':S(minLength=12,maxLength=128)},['token','password']))]:route('/auth/'+p,'post',b,public=True)
+for name in ['register','login','resend-verification','reset-request','reset']:
+ paths['/auth/'+name]['post']['requestBody']['content']['application/json']['schema']['properties']['turnstileToken']=S(maxLength=2048)
+paths['/auth/register']['post']['responses']['200']={'description':'Email verification required','content':{'application/json':{'schema':R('Acknowledgement')}}}
 route('/auth/mobile/start','post',O({'codeChallenge':S(pattern='^[A-Za-z0-9_-]{43}$'),'state':S(pattern='^[a-f0-9]{64}$')},['codeChallenge','state']),R('JsonRecord'),public=True,status=201)
 route('/auth/mobile/request/{id}','get',response=R('JsonRecord'),public=True)
 route('/auth/mobile/authorize','post',O({'requestId':uuid,'totp':S(maxLength=10)},['requestId']),R('JsonRecord'))
@@ -81,7 +84,7 @@ route('/paper-protection/{id}','patch',O({'version':I(minimum=1),'stopLoss':{'ty
 route('/backtests','post',O(ip|{'fast':I(minimum=2,maximum=100),'slow':I(minimum=3,maximum=200),'riskPct':N(exclusiveMinimum=0,maximum=5),'initialBalance':positive,'feeBps':N(minimum=0,maximum=100),'slippageBps':N(minimum=0,maximum=100)},['fast','slow','riskPct','initialBalance','feeBps','slippageBps']),R('JsonRecord'),status=202);route('/backtests/{id}','get',response=A(R('JsonRecord')))
 route('/daily-brief','get',response=R('AnalysisJob'));route('/daily-brief','post',O(ai,[k for k in ai if k!='agentId']),R('AnalysisJob'),status=202)
 route('/scanner/candidates','get',response=R('JsonRecord'),query={k:ip[k] for k in ['venue','market','timeframe']}|{'minVolume':N(minimum=1000000,maximum=1000000000000,default=10000000),'limit':I(minimum=5,maximum=30,default=24),'direction':S(enum=['all','LONG','SHORT'],default='all')})
-route('/signals','get',response=A(R('JsonRecord')));route('/correlation','get',response=R('JsonRecord'),query={'symbols':S(),'venue':ip['venue']});route('/scanner','get',response=A(R('JsonRecord')),query={'mode':S(enum=['rules','ai'])});route('/scanner','post',O(ai|{'timeframe':ip['timeframe']},[k for k in ai if k!='agentId']),R('JsonRecord'),status=202,idempotent=True)
+route('/signals','get',response=A(R('JsonRecord')));route('/correlation','get',response=R('JsonRecord'),query={'symbols':S(),'venue':ip['venue']});route('/scanner','get',response=A(R('JsonRecord')),query={'mode':S(enum=['rules','ai']),'venue':ip['venue'],'market':ip['market'],'ids':S(maxLength=600)});route('/scanner','post',O(ai|{'timeframe':ip['timeframe'],'venue':ip['venue'],'market':ip['market'],'timeframes':dict(type='array',items=ip['timeframe'],minItems=1,maxItems=3,uniqueItems=True),'mode':S(enum=['deep','quick'],default='deep')},[k for k in ai if k!='agentId']),R('JsonRecord'),status=202,idempotent=True)
 route('/exchange/connect','post',O({'apiKey':S(minLength=10,maxLength=200),'secret':S(minLength=10,maxLength=200)},['apiKey','secret']),R('JsonRecord'));route('/exchange/portfolio','get',response=R('JsonRecord'));route('/exchange/trades','get',response=R('JsonRecord'),query={'symbol':ip['symbol']})
 route('/reports','post',O({'analysisId':uuid},['analysisId']),{'type':'string','format':'binary'},binary='application/pdf');route('/billing/checkout','post',O({}),R('JsonRecord'));route('/billing/webhook','post',public=True);paths['/billing/webhook']['post']['parameters']=[{'in':'header','name':'stripe-signature','required':True,'schema':S()}];route('/account/export','get',response=R('JsonRecord'));route('/account','delete',O({'password':S()}))
 route('/agents','get',response=A(R('JsonRecord')))
@@ -95,6 +98,10 @@ route('/admin/agent-tests','post',O({'agentId':uuid,'totp':S(maxLength=6)},['age
 route('/admin/users/{id}','patch',O({'role':S(enum=['user','admin']),'suspended':B,'totp':S(maxLength=6)},['role','suspended']))
 route('/admin/settings','put',settings,R('JsonRecord'))
 route('/admin/job-cancellations','post',O({'id':uuid,'totp':S(maxLength=6)},['id']))
+route('/admin/integrations','get',response=A(R('JsonRecord')))
+route('/admin/integrations/resend/test','post',O({'email':S(format='email'),'totp':S(maxLength=6)},['email']))
+for service,config in [('resend',O({'from':S(format='email')},['from'])),('turnstile',O({'siteKey':S(minLength=8,maxLength=200)},['siteKey']))]:
+ route('/admin/integrations/'+service,'put',O({'enabled':B,'version':I(minimum=1),'secret':S(minLength=8,maxLength=4096),'config':config,'totp':S(maxLength=6)},['enabled','version','config']),R('Acknowledgement'))
 for p,ops in paths.items():
  if p.startswith('/admin/'):
   for op in ops.values():op['description']='Administrator role required. Mutations require current TOTP when the administrator has 2FA enabled. Secrets are write-only; reads expose configuration metadata only.'

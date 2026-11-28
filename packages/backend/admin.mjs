@@ -6,6 +6,9 @@ import { encryptKey, decryptKey } from "../security/key-vault.mjs";
 import { platformSettings } from "./platform-ai.mjs";
 import { llm, providers } from "../ai/agent.mjs";
 import { withAIBudget } from "./jobs.mjs";
+import { serviceConfig, saveService } from "./integrations.mjs";
+import { email } from "./mail.mjs";
+import { messages } from "./localization.mjs";
 const uuid = z.string().uuid();
 export const agentSchema = z
   .object({
@@ -71,6 +74,25 @@ export async function adminHandle(user, path, method, input, params) {
     ).rows[0];
     return { stats, settings: await platformSettings() };
   }
+  if (path === "admin/integrations" && method === "GET")
+    return Promise.all(
+      ["resend", "turnstile"].map((name) => serviceConfig(name)),
+    );
+  if (path === "admin/integrations/resend/test" && method === "POST") {
+    const b = z
+      .object({ email: z.string().email().max(254) })
+      .strict()
+      .parse(body);
+    await rateLimit("admin-mail-test:" + user.id, 3, 3600);
+    const m = messages(user.locale);
+    await email(b.email, m.mailTestSubject, m.mailTestBody);
+    return { accepted: true };
+  }
+  if (
+    /^admin\/integrations\/(resend|turnstile)$/.test(path) &&
+    method === "PUT"
+  )
+    return saveService(user, path.split("/")[2], body);
   if (path === "admin/settings") {
     if (method === "GET") return platformSettings();
     const b = settingsSchema.parse(body),

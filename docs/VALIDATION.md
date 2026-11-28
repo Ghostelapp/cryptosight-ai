@@ -108,3 +108,11 @@ All 26 Chromium browser scenarios passed in the final complete run (3.3 minutes)
 The checks caught two UI issues during development: a duplicated empty-state block and delayed preference initialization overwriting an edit. Empty tables now use one compact message, and initial preferences hydrate before auxiliary agent discovery. Records are scoped to their page and account so navigating from alerts to backtesting cannot interpret an alert row as a strategy. Earlier intermediate test failures from changed selectors and development hot reload were superseded by the final clean full run.
 
 Production build/strict TypeScript and OpenAPI/locale parity checks passed. This revision changes the web UI and client state only; backend calculations, dependencies and native binaries remain at their previously verified versions. No external model generation was needed for layout validation.
+
+## 2026-11-28 — email, anti-spam and batch AI scans
+
+- Node suite: 132 passed, 3 optional live tests skipped. New cases cover production email verification, single-use password recovery/session revocation, encrypted write-only service settings, Turnstile hostname/action/token checks and tenant-scoped multi-timeframe deep jobs.
+- Browser: 29 distinct scenarios verified across the full run and targeted reruns after the integrations form busy-state fix. Registration/recovery challenges and batch scan polling/partial failures also passed final targeted reruns. Integration credentials in browser tests are fixtures.
+- Production build and strict TypeScript passed. Contracts regenerated for 87 paths / 108 operations.
+- The production scanner was blocked by Redis memory exhaustion from unbounded completed scheduler ticks. Removing only old completed technical ticks reduced memory from 256.10 MB to 2.88 MB and existing queued analyses resumed. User analysis/trade/account records were retained. Scheduler retention and worker heartbeat checks now prevent silent recurrence.
+- Real Resend delivery and Cloudflare Turnstile remain pending owner configuration. No real email was sent during validation. Use Administration → Integrations and the explicit test-email action. See AUTH-EMAIL-TURNSTILE.md and QUEUE-RETENTION.md.

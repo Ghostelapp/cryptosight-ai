@@ -1580,6 +1580,10 @@
                   "email": {
                     "type": "string",
                     "format": "email"
+                  },
+                  "turnstileToken": {
+                    "type": "string",
+                    "maxLength": 2048
                   }
                 },
                 "required": [
@@ -1676,6 +1680,16 @@
                 }
               }
             }
+          },
+          "200": {
+            "description": "Email verification required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Acknowledgement"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -1704,6 +1718,10 @@
                   },
                   "consent": {
                     "const": true
+                  },
+                  "turnstileToken": {
+                    "type": "string",
+                    "maxLength": 2048
                   }
                 },
                 "required": [
@@ -1822,6 +1840,10 @@
                   "totp": {
                     "type": "string",
                     "maxLength": 10
+                  },
+                  "turnstileToken": {
+                    "type": "string",
+                    "maxLength": 2048
                   }
                 },
                 "required": [
@@ -2040,6 +2062,10 @@
                   "email": {
                     "type": "string",
                     "format": "email"
+                  },
+                  "turnstileToken": {
+                    "type": "string",
+                    "maxLength": 2048
                   }
                 },
                 "required": [
@@ -2154,6 +2180,10 @@
                     "type": "string",
                     "minLength": 12,
                     "maxLength": 128
+                  },
+                  "turnstileToken": {
+                    "type": "string",
+                    "maxLength": 2048
                   }
                 },
                 "required": [
@@ -9935,6 +9965,39 @@
                 "ai"
               ]
             }
+          },
+          {
+            "name": "venue",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "binance",
+                "bybit",
+                "okx"
+              ],
+              "default": "binance"
+            }
+          },
+          {
+            "name": "market",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "spot",
+                "perpetual"
+              ],
+              "default": "spot"
+            }
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 600
+            }
           }
         ]
       },
@@ -10103,6 +10166,56 @@
                       "1M"
                     ],
                     "default": "1h"
+                  },
+                  "venue": {
+                    "type": "string",
+                    "enum": [
+                      "binance",
+                      "bybit",
+                      "okx"
+                    ],
+                    "default": "binance"
+                  },
+                  "market": {
+                    "type": "string",
+                    "enum": [
+                      "spot",
+                      "perpetual"
+                    ],
+                    "default": "spot"
+                  },
+                  "timeframes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "1m",
+                        "3m",
+                        "5m",
+                        "15m",
+                        "30m",
+                        "1h",
+                        "2h",
+                        "4h",
+                        "6h",
+                        "12h",
+                        "1d",
+                        "1w",
+                        "1M"
+                      ],
+                      "default": "1h"
+                    },
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "uniqueItems": true
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "deep",
+                      "quick"
+                    ],
+                    "default": "deep"
                   }
                 },
                 "required": [
@@ -12807,6 +12920,545 @@
                 },
                 "required": [
                   "id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "description": "Administrator role required. Mutations require current TOTP when the administrator has 2FA enabled. Secrets are write-only; reads expose configuration metadata only."
+      }
+    },
+    "/admin/integrations": {
+      "get": {
+        "operationId": "get_admin_integrations",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "mobileBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JsonRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF/origin or consent rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing tenant-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Quota or risk limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Administrator role required. Mutations require current TOTP when the administrator has 2FA enabled. Secrets are write-only; reads expose configuration metadata only."
+      }
+    },
+    "/admin/integrations/resend/test": {
+      "post": {
+        "operationId": "post_admin_integrations_resend_test",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "mobileBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Acknowledgement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF/origin or consent rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing tenant-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Quota or risk limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for cookie sessions: fetch from auth/me. Native bearer sessions omit CSRF. Both transports send the exact APP_ORIGIN Origin header."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "totp": {
+                    "type": "string",
+                    "maxLength": 6
+                  }
+                },
+                "required": [
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "description": "Administrator role required. Mutations require current TOTP when the administrator has 2FA enabled. Secrets are write-only; reads expose configuration metadata only."
+      }
+    },
+    "/admin/integrations/resend": {
+      "put": {
+        "operationId": "put_admin_integrations_resend",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "mobileBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Acknowledgement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF/origin or consent rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing tenant-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Quota or risk limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for cookie sessions: fetch from auth/me. Native bearer sessions omit CSRF. Both transports send the exact APP_ORIGIN Origin header."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "secret": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 4096
+                  },
+                  "config": {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string",
+                        "format": "email"
+                      }
+                    },
+                    "required": [
+                      "from"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "totp": {
+                    "type": "string",
+                    "maxLength": 6
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "version",
+                  "config"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "description": "Administrator role required. Mutations require current TOTP when the administrator has 2FA enabled. Secrets are write-only; reads expose configuration metadata only."
+      }
+    },
+    "/admin/integrations/turnstile": {
+      "put": {
+        "operationId": "put_admin_integrations_turnstile",
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "mobileBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Acknowledgement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF/origin or consent rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing tenant-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Quota or risk limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for cookie sessions: fetch from auth/me. Native bearer sessions omit CSRF. Both transports send the exact APP_ORIGIN Origin header."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "secret": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 4096
+                  },
+                  "config": {
+                    "type": "object",
+                    "properties": {
+                      "siteKey": {
+                        "type": "string",
+                        "minLength": 8,
+                        "maxLength": 200
+                      }
+                    },
+                    "required": [
+                      "siteKey"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "totp": {
+                    "type": "string",
+                    "maxLength": 6
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "version",
+                  "config"
                 ],
                 "additionalProperties": false
               }

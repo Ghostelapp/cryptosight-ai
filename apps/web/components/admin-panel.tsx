@@ -1,5 +1,6 @@
 "use client";
 import { ModelPicker } from "./model-picker";
+import { AdminIntegrations } from "./admin-integrations";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "./ui/button";
@@ -159,38 +160,47 @@ export function AdminPanel({ api, user, onChanged }: any) {
         </div>
       )}
       <div className="admin-tabs" role="tablist" aria-label={t("admin")}>
-        {["agents", "users", "settings", "jobs", "audit"].map((s) => (
-          <button
-            key={s}
-            role="tab"
-            tabIndex={section === s ? 0 : -1}
-            onKeyDown={(event) => {
-              const tabs = ["agents", "users", "settings", "jobs", "audit"],
-                index = tabs.indexOf(s);
-              const next =
-                event.key === "ArrowRight"
-                  ? tabs[(index + 1) % tabs.length]
-                  : event.key === "ArrowLeft"
-                    ? tabs[(index + tabs.length - 1) % tabs.length]
-                    : event.key === "Home"
-                      ? tabs[0]
-                      : event.key === "End"
-                        ? tabs.at(-1)
-                        : null;
-              if (next) {
-                event.preventDefault();
-                setSection(next);
-                document.getElementById("admin-tab-" + next)?.focus();
-              }
-            }}
-            aria-selected={section === s}
-            aria-controls={"admin-" + s}
-            id={"admin-tab-" + s}
-            onClick={() => setSection(s)}
-          >
-            {t("admin" + s[0].toUpperCase() + s.slice(1))}
-          </button>
-        ))}
+        {["agents", "users", "settings", "integrations", "jobs", "audit"].map(
+          (s) => (
+            <button
+              key={s}
+              role="tab"
+              tabIndex={section === s ? 0 : -1}
+              onKeyDown={(event) => {
+                const tabs = [
+                    "agents",
+                    "users",
+                    "settings",
+                    "integrations",
+                    "jobs",
+                    "audit",
+                  ],
+                  index = tabs.indexOf(s);
+                const next =
+                  event.key === "ArrowRight"
+                    ? tabs[(index + 1) % tabs.length]
+                    : event.key === "ArrowLeft"
+                      ? tabs[(index + tabs.length - 1) % tabs.length]
+                      : event.key === "Home"
+                        ? tabs[0]
+                        : event.key === "End"
+                          ? tabs.at(-1)
+                          : null;
+                if (next) {
+                  event.preventDefault();
+                  setSection(next);
+                  document.getElementById("admin-tab-" + next)?.focus();
+                }
+              }}
+              aria-selected={section === s}
+              aria-controls={"admin-" + s}
+              id={"admin-tab-" + s}
+              onClick={() => setSection(s)}
+            >
+              {t("admin" + s[0].toUpperCase() + s.slice(1))}
+            </button>
+          ),
+        )}
       </div>
       {user.two_factor && (
         <Field label={t("adminTotp")}>
@@ -221,6 +231,16 @@ export function AdminPanel({ api, user, onChanged }: any) {
         id={"admin-" + section}
         aria-labelledby={"admin-tab-" + section}
       >
+        {section === "integrations" && (
+          <AdminIntegrations
+            api={api}
+            totp={totp}
+            onSaved={async () => {
+              setTotp("");
+              await onChanged();
+            }}
+          />
+        )}
         {section === "agents" && (
           <div
             className="settings-grid admin-agent-grid"

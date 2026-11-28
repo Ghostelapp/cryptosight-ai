@@ -268,5 +268,17 @@ export const routes = {
   ],
   "/admin/job-cancellations": [
     "post"
+  ],
+  "/admin/integrations": [
+    "get"
+  ],
+  "/admin/integrations/resend/test": [
+    "post"
+  ],
+  "/admin/integrations/resend": [
+    "put"
+  ],
+  "/admin/integrations/turnstile": [
+    "put"
   ]
 };

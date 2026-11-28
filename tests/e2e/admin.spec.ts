@@ -1,4 +1,76 @@
 import { test, expect } from "@playwright/test";
+test("administrator configures encrypted Resend and Turnstile keys without receiving them back", async ({
+  page,
+}) => {
+  const login = await page.request.post("/api/v1/auth/login", {
+    headers: { origin: "http://127.0.0.1:3100" },
+    data: {
+      email: "admin-e2e@example.com",
+      password: "isolated-e2e-password-123",
+    },
+  });
+  expect(login.status()).toBe(200);
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "I understand and agree", exact: true })
+    .click();
+  await expect(page.locator(".account-button")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Administration", exact: true })
+    .click();
+  await page.getByRole("tab", { name: "Integrations", exact: true }).click();
+  const region = page.getByRole("region", {
+    name: "Service integrations",
+    exact: true,
+  });
+  const resend = region
+    .locator("form")
+    .filter({
+      has: page.getByRole("heading", { name: "Resend", exact: true }),
+    });
+  await resend
+    .getByLabel("Verified sender email", { exact: true })
+    .fill("noreply@cryptosight.tech");
+  await resend
+    .getByLabel("Resend API key", { exact: true })
+    .fill("re_fixture_browser_secret");
+  await resend.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    resend.getByLabel("Resend API key", { exact: true }),
+  ).toHaveValue("");
+  const turnstile = region
+    .locator("form")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "Cloudflare Turnstile",
+        exact: true,
+      }),
+    });
+  await turnstile
+    .getByLabel("Turnstile site key (public)", { exact: true })
+    .fill("fixture-browser-site");
+  await turnstile
+    .getByLabel("Turnstile secret key", { exact: true })
+    .fill("fixture-browser-captcha-secret");
+  await turnstile.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    turnstile.getByLabel("Turnstile secret key", { exact: true }),
+  ).toHaveValue("");
+  const response = await page.request.get("/api/v1/admin/integrations");
+  expect(response.status()).toBe(200);
+  const text = await response.text();
+  expect(text).not.toContain("re_fixture_browser_secret");
+  expect(text).not.toContain("fixture-browser-captcha-secret");
+  await page.setViewportSize({ width: 360, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await region.screenshot({
+    path: "test-results/admin-service-integrations.png",
+  });
+});
 
 test("administrator can save an encrypted agent and expose it in analysis controls", async ({
   page,

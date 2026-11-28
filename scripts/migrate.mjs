@@ -20,6 +20,7 @@ try {
     "006_paper_trading.sql",
     "007_mobile_login.sql",
     "008_paper_leverage.sql",
+    "009_service_integrations.sql",
   ]) {
     if (
       (

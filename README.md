@@ -8,6 +8,8 @@ Analysis engine v2 adds adaptive multi-timeframe deep research, independent evid
 
 The 2026-11-14 integrated update combines advanced paper trading, mobile chart fixes and terminal productivity tools, with patched dependencies and gateway accounting. See [INTEGRATION-REVIEW.md](docs/INTEGRATION-REVIEW.md) for source revisions, data preservation and current validation.
 
+Email delivery and Cloudflare Turnstile can be configured in Administration → Integrations. See [setup instructions](docs/AUTH-EMAIL-TURNSTILE.md) and [worker queue retention](docs/QUEUE-RETENTION.md). AI watchlist scans support up to three entry timeframes with separate deep jobs and visible completion/failure states.
+
 ## Local development
 
 Native iOS and Android apps are now in `apps/mobile`. Use `npm run mobile:start` for development and `npm run mobile:apk -- --local` for an Android test APK. They connect to the same backend through one-use PKCE account pairing. Setup, EAS signing and platform limitations: [NATIVE-MOBILE.md](docs/NATIVE-MOBILE.md).
@@ -22,7 +24,7 @@ npm run secrets:generate
 npm run dev
 ```
 
-Open http://localhost:3000. Development uses a persistent embedded PostgreSQL engine in `.runtime/database` and an embedded analysis worker. Without SMTP, development registration verifies email immediately. Production always requires SMTP for email registration and an external PostgreSQL database. Leave `NEXT_PUBLIC_GATEWAY_URL` empty to use direct exchange browser sockets for candles; order flow and multi-device drawing sync require the gateway.
+Open http://localhost:3000. Development uses a persistent embedded PostgreSQL engine in `.runtime/database` and an embedded analysis worker. Without SMTP, development registration verifies email immediately. Production requires configured Resend or SMTP for email registration and an external PostgreSQL database. Leave `NEXT_PUBLIC_GATEWAY_URL` empty to use direct exchange browser sockets for candles; order flow and multi-device drawing sync require the gateway.
 
 Actual quotes appear only when the selected provider is reachable. The explicit **Sample replay** control displays deterministic synthetic candles, disables live analysis and does not replace unavailable live data. Enter a provider API key in account Settings, select a model fetched from the provider catalog (or enter its identifier manually), and run an analysis. Optional integrations show unavailable states until configured.
 
