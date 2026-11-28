@@ -164,12 +164,24 @@ test("deep research displays measured evidence and costs, retries the same inten
       },
     });
   });
+  await page.route("**/api/v1/agents", (r) =>
+    r.fulfill({
+      json: [
+        {
+          id: "550e8400-e29b-41d4-a716-446655440099",
+          name: "Published analyst",
+          provider: "openai",
+          model: "fixture",
+          description: "Administrator configuration",
+        },
+      ],
+    }),
+  );
   await page.goto("/");
   await page
     .getByRole("button", { name: "I understand and agree", exact: true })
     .click();
   await expect(page.locator(".account-button")).toBeVisible();
-  await page.getByLabel("Model ID", { exact: true }).first().fill("fixture");
   const analyze = page.getByRole("button", {
     name: "Analyze market",
     exact: true,

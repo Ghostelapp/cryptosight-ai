@@ -336,10 +336,10 @@
   "adminInstructions": "Preferencje analizy",
   "adminInstructionsHint": "Preferencje uzupełniają instrukcje analityka. Zasady pracy na danych, niepewności i walidacja wyników nadal obowiązują.",
   "adminKeyStored": "Klucz zapisany bezpiecznie",
-  "adminKeyRequired": "Wklej klucz API dostawcy",
-  "adminKeyHint": "Klucz jest szyfrowany. Zostaw puste pole, aby zachować obecny klucz. Zapisanych kluczy nie można wyświetlić.",
+  "adminKeyRequired": "Opcjonalny wspólny klucz API",
+  "adminKeyHint": "Opcjonalny wspólny klucz jest szyfrowany. Bez niego użytkownicy korzystają z własnych kluczy. Puste pole zachowuje zapisany klucz; aby go usunąć, zaznacz odpowiednią opcję.",
   "adminRemoveKey": "Usuń zapisany klucz",
-  "adminNoKey": "Brak zapisanego klucza API",
+  "adminNoKey": "Bez wspólnego klucza — użytkownicy dodają własne",
   "adminEnabled": "Włączony",
   "adminDisabled": "Wyłączony",
   "adminNoAgents": "Dodaj agenta, zapisz klucz API i włącz go, aby był dostępny w narzędziach analizy.",
@@ -670,5 +670,8 @@
   "authLoginTab": "Logowanie",
   "authRegisterTab": "Rejestracja",
   "authMfaToggle": "Korzystam z uwierzytelniania dwuetapowego",
-  "authAlternative": "lub kontynuuj przez"
+  "authAlternative": "lub kontynuuj przez",
+  "agentsUnavailable": "Administrator nie udostępnił jeszcze agentów AI.",
+  "agentsManagedHint": "Agent skonfigurowany przez administratora. Twój klucz dodasz w ustawieniach.",
+  "err_agent_required": "Wybierz agenta AI udostępnionego przez administratora."
 }

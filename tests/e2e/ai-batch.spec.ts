@@ -118,6 +118,19 @@ test("multi-frame scanner submits deep jobs, shows partial failures and polls qu
       },
     });
   });
+  await page.route("**/api/v1/agents", (r) =>
+    r.fulfill({
+      json: [
+        {
+          id: "550e8400-e29b-41d4-a716-446655440099",
+          name: "Published analyst",
+          provider: "openai",
+          model: "fixture",
+          description: "Administrator configuration",
+        },
+      ],
+    }),
+  );
   await page.goto("/");
   await page
     .getByRole("button", { name: "I understand and agree", exact: true })
@@ -131,7 +144,6 @@ test("multi-frame scanner submits deep jobs, shows partial failures and polls qu
     name: "Additional watchlist scans",
     exact: true,
   });
-  await panel.getByLabel("Model ID", { exact: true }).fill("fixture");
   await panel
     .getByRole("button", { name: "AI watchlist scan", exact: true })
     .click();

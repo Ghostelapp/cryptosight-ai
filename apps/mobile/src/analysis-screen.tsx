@@ -24,8 +24,6 @@ function Research() {
   const agents = useRemote<Agent[]>("agents", !!user);
   const history = useRemote<any[]>("analyses", !!user, 10000);
   const [agentId, setAgent] = useState(""),
-    [provider, setProvider] = useState("openai"),
-    [model, setModel] = useState(""),
     [mode, setMode] = useState("deep"),
     [jobId, setJob] = useState("");
   const job = useRemote<any>(
@@ -34,15 +32,9 @@ function Research() {
     4000,
     (data) => !["completed", "failed"].includes(data.status),
   );
-  const catalog = useRemote<{
-    provider: string;
-    models: { id: string; name: string }[];
-  }>("models?provider=" + provider, !!user && !agentId);
-  const [modelSearch, setModelSearch] = useState("");
-  const models = catalog.data?.provider === provider ? catalog.data.models : [];
-  const resolvedModel = model || (models.length === 1 ? models[0].id : "");
   const intents = useRef(mutationIntents(Crypto.randomUUID));
-  const selected = agents.data?.find((a) => a.id === agentId),
+  const selected =
+      agents.data?.find((a) => a.id === agentId) || agents.data?.[0],
     result = job.data?.result;
   const submit = () =>
     void run(async () => {
@@ -50,8 +42,8 @@ function Research() {
         ...instrument,
         locale,
         mode,
-        provider: selected?.provider || provider,
-        model: selected?.model || resolvedModel.trim(),
+        provider: selected?.provider,
+        model: selected?.model,
         ...(selected ? { agentId: selected.id } : {}),
       };
       const response = await api.request("analyses", {
@@ -76,72 +68,14 @@ function Research() {
         {!!agents.data?.length && (
           <Choices
             label={t("adminAgent")}
-            value={agentId}
+            value={selected?.id || ""}
             onChange={setAgent}
             options={[
-              { value: "", label: t("mobileNoAgent") },
               ...agents.data.map((a) => ({ value: a.id, label: a.name })),
             ]}
           />
         )}
-        {!selected && (
-          <>
-            <Choices
-              label={t("provider")}
-              value={provider}
-              onChange={(value) => {
-                setProvider(value);
-                setModel("");
-                setModelSearch("");
-              }}
-              options={[
-                "openai",
-                "gemini",
-                "anthropic",
-                "openrouter",
-                "local",
-              ].map((value) => ({ value, label: value }))}
-            />
-            <Loading loading={catalog.loading} />
-            {!!models.length && (
-              <>
-                <Field
-                  label={t("searchModels")}
-                  value={modelSearch}
-                  onChangeText={setModelSearch}
-                  autoCapitalize="none"
-                />
-                <Choices
-                  label={t("availableModels")}
-                  value={resolvedModel}
-                  onChange={setModel}
-                  options={models
-                    .filter((m) =>
-                      (m.id + " " + m.name)
-                        .toLowerCase()
-                        .includes(modelSearch.toLowerCase()),
-                    )
-                    .slice(0, 20)
-                    .map((m) => ({ value: m.id, label: m.name }))}
-                />
-              </>
-            )}
-            <Button
-              title={t("refreshModels")}
-              disabled={catalog.loading}
-              onPress={() => void catalog.refetch()}
-            />
-            {!!catalog.error && <Notice error>{catalog.error}</Notice>}
-            <Field
-              label={t("model")}
-              value={resolvedModel}
-              onChangeText={setModel}
-              placeholder={t("mobileModelHint")}
-              autoCapitalize="none"
-              maxLength={100}
-            />
-          </>
-        )}
+        {!selected && <Notice>{t("agentsUnavailable")}</Notice>}
         <Choices
           label={t("analysis")}
           value={mode}
@@ -153,7 +87,7 @@ function Research() {
         />
         <Button
           title={t("analyze")}
-          disabled={busy || (!selected && !resolvedModel.trim())}
+          disabled={busy || !selected}
           onPress={submit}
         />
         {!!agents.error && <Notice error>{agents.error}</Notice>}

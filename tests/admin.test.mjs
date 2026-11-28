@@ -470,6 +470,63 @@ test("queued job cancellation releases its reservation once and refuses running 
     409,
   );
 });
+test("members use admin-published agents with personal keys and cannot override or manage models", async () => {
+  assert.equal(
+    (
+      await req("admin/agents", member, "POST", {
+        name: "Forged",
+        provider: "openai",
+        model: "forged",
+      })
+    ).status,
+    403,
+  );
+  assert.equal((await req("models?provider=openai", member)).status, 403);
+  await assert.rejects(
+    resolveAIConfig(member.id, { provider: "openai", model: "forged" }),
+    /agent_required/,
+  );
+  const published = await req("admin/agents", admin, "POST", {
+    name: "BYOK agent",
+    provider: "openai",
+    model: "fixed-model",
+    instructions: "Fixed administrator instructions",
+    enabled: true,
+  });
+  assert.equal(published.status, 200, JSON.stringify(published.data));
+  const id = published.data.id;
+  assert.ok((await req("agents", member)).data.some((a) => a.id === id));
+  assert.equal(
+    (await req("admin/agents/" + id, member, "PUT", { model: "forged" }))
+      .status,
+    403,
+  );
+  assert.equal(
+    (await req("admin/agents/" + id, member, "DELETE", { version: 1 })).status,
+    403,
+  );
+  const resolved = await resolveAIConfig(member.id, {
+    agentId: id,
+    provider: "anthropic",
+    model: "forged",
+  });
+  assert.equal(resolved.provider, "openai");
+  assert.equal(resolved.model, "fixed-model");
+  await req("credentials", member, "POST", {
+    provider: "openai",
+    key: "member-personal-fixture-secret",
+  });
+  const configured = await platformCredential(member.id, resolved);
+  assert.equal(configured.key, "member-personal-fixture-secret");
+  assert.equal(configured.instructions, "Fixed administrator instructions");
+  assert.ok(
+    !JSON.stringify((await req("agents", member)).data).includes(
+      configured.key,
+    ),
+  );
+  await req("admin/agents/" + id, admin, "DELETE", { version: 1 });
+});
+
 test("enabled admin 2FA is enforced on every administration mutation", async () => {
   const { secret } = totpBegin(admin);
   const { TOTP } = await import("@otplib/totp");

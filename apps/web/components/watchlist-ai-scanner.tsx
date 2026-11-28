@@ -185,7 +185,10 @@ export function WatchlistAIScanner({
           : ""}
       </p>
       <div className="paper-actions">
-        <Button disabled={busy || !frames.length} onClick={() => void scan()}>
+        <Button
+          disabled={busy || !frames.length || !config.agentId}
+          onClick={() => void scan()}
+        >
           {busy ? t("loading") : t("aiScan")}
         </Button>
         <Button

@@ -26,7 +26,7 @@ npm run dev
 
 Open http://localhost:3000. Development uses a persistent embedded PostgreSQL engine in `.runtime/database` and an embedded analysis worker. Without SMTP, development registration verifies email immediately. Production requires configured Resend or SMTP for email registration and an external PostgreSQL database. Leave `NEXT_PUBLIC_GATEWAY_URL` empty to use direct exchange browser sockets for candles; order flow and multi-device drawing sync require the gateway.
 
-Actual quotes appear only when the selected provider is reachable. The explicit **Sample replay** control displays deterministic synthetic candles, disables live analysis and does not replace unavailable live data. Enter a provider API key in account Settings, select a model fetched from the provider catalog (or enter its identifier manually), and run an analysis. Optional integrations show unavailable states until configured.
+Actual quotes appear only when the selected provider is reachable. The explicit **Sample replay** control displays deterministic synthetic candles, disables live analysis and does not replace unavailable live data. Administrators publish AI agents and configure their models in Administration. Members save their provider API key in Settings, select a published agent, and run an analysis. See [AI agent permissions](docs/AI-AGENT-PERMISSIONS.md). Optional integrations show unavailable states until configured.
 
 ```sh
 npm test

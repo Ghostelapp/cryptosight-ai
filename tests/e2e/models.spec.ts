@@ -1,81 +1,70 @@
 import { test, expect } from "@playwright/test";
 import { randomBytes } from "node:crypto";
-
-test("saving a provider key discovers models, supports selection, and clears stale provider results", async ({
+test("members can save a personal key and choose published agents but cannot edit providers or models", async ({
   page,
 }) => {
   const registered = await page.request.post("/api/v1/auth/register", {
     headers: { origin: "http://127.0.0.1:3100" },
     data: {
-      email: `models-${randomBytes(5).toString("hex")}@example.com`,
-      password: "model-picker-e2e-password-123",
+      email: `managed-${randomBytes(5).toString("hex")}@example.com`,
+      password: "managed-fixture-password-123",
       consent: true,
     },
   });
   expect(registered.status()).toBe(201);
-  let discovered = false;
-  await page.route("**/api/v1/models?**", async (route) => {
-    const provider = new URL(route.request().url()).searchParams.get(
-      "provider",
-    );
-    if (provider === "gemini")
-      return route.fulfill({
-        status: 400,
-        json: { code: "provider_key_rejected" },
-      });
-    if (!discovered)
-      return route.fulfill({
-        status: 503,
-        json: { code: "credential_required" },
-      });
-    return route.fulfill({
-      json: {
-        provider: "openai",
-        models: [
-          { id: "gpt-fixture-one", name: "Fixture One" },
-          { id: "gpt-fixture-two", name: "Fixture Two" },
-        ],
-      },
-    });
-  });
-  await page.route("**/api/v1/credentials", async (route) => {
-    if (route.request().method() === "POST") discovered = true;
-    return route.continue();
+  await page.route("**/api/v1/agents", (r) =>
+    r.fulfill({
+      json: [
+        {
+          id: "550e8400-e29b-41d4-a716-446655440099",
+          name: "Published analyst",
+          provider: "openai",
+          model: "fixed-model",
+          description: "Administrator configuration",
+        },
+      ],
+    }),
+  );
+  let catalogs = 0;
+  page.on("request", (r) => {
+    if (r.url().includes("/api/v1/models")) catalogs++;
   });
   await page.goto("/");
-  const consent = page.getByRole("button", {
-    name: "I understand and agree",
-    exact: true,
-  });
-  await expect(consent).toBeVisible();
-  await consent.click();
-  await expect(page.locator(".account-button")).toBeVisible();
+  await page
+    .getByRole("button", { name: "I understand and agree", exact: true })
+    .click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("tab", { name: "AI keys", exact: true }).click();
-  const keyCard = page.locator(".form-card").filter({
-    has: page.getByRole("heading", { name: "API key", exact: true }),
-  });
-  await keyCard
+  const card = page
+    .locator(".form-card")
+    .filter({
+      has: page.getByRole("heading", { name: "API key", exact: true }),
+    });
+  await expect(card.getByLabel("Model ID", { exact: true })).toHaveCount(0);
+  await card
     .getByLabel("API key", { exact: true })
-    .fill("fixture-browser-key");
-  await keyCard.getByRole("button", { name: "Save", exact: true }).click();
-  const picker = keyCard.getByRole("combobox", {
-    name: "Models available to this key",
-    exact: true,
-  });
-  await expect(picker.locator("option")).toHaveCount(3);
-  await picker.selectOption("gpt-fixture-two");
+    .fill("personal-browser-fixture-secret");
+  await card.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(card.locator(".key-row")).toContainText("openai");
+  await expect(card.getByLabel("API key", { exact: true })).toHaveValue("");
+  expect(catalogs).toBe(0);
+  await page
+    .getByRole("button", { name: "Terminal", exact: true })
+    .last()
+    .click();
+  await expect(
+    page.getByRole("combobox", { name: "AI agent", exact: true }),
+  ).toHaveValue("550e8400-e29b-41d4-a716-446655440099");
+  await expect(page.getByLabel("Model ID", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("combobox", { name: "AI provider", exact: true }),
+  ).toHaveCount(0);
+  expect(
+    (await page.request.get("/api/v1/models?provider=openai")).status(),
+  ).toBe(403);
+  expect((await page.request.get("/api/v1/admin/agents")).status()).toBe(403);
   await page.screenshot({
-    path: "test-results/model-picker.png",
+    path: "test-results/member-managed-agents.png",
     fullPage: true,
   });
-  await expect(keyCard.getByLabel("Model ID", { exact: true })).toHaveValue(
-    "gpt-fixture-two",
-  );
-  await keyCard
-    .getByRole("combobox", { name: "AI provider", exact: true })
-    .selectOption("gemini");
-  await expect(keyCard.getByLabel("Model ID", { exact: true })).toHaveValue("");
-  await expect(keyCard.getByRole("status")).toContainText("rejected");
-  await expect(picker.locator("option")).toHaveCount(1);
 });

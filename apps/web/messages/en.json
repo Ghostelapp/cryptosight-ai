@@ -336,10 +336,10 @@
   "adminInstructions": "Research preferences",
   "adminInstructionsHint": "These preferences supplement the analyst prompt. Evidence rules, uncertainty and output validation always apply.",
   "adminKeyStored": "Key stored securely",
-  "adminKeyRequired": "Paste the provider API key",
-  "adminKeyHint": "Encrypted at rest. Leave blank to keep the existing key. Saved keys cannot be displayed.",
+  "adminKeyRequired": "Optional shared API key",
+  "adminKeyHint": "An optional shared key is encrypted. Without one, users supply their own keys. Leave blank to keep the stored key; use the remove option to clear it.",
   "adminRemoveKey": "Remove the saved key",
-  "adminNoKey": "No saved API key",
+  "adminNoKey": "No shared key — users supply their own",
   "adminEnabled": "Enabled",
   "adminDisabled": "Disabled",
   "adminNoAgents": "Add an agent, save its API key and enable it to make it available in analysis tools.",
@@ -670,5 +670,8 @@
   "authLoginTab": "Log in",
   "authRegisterTab": "Register",
   "authMfaToggle": "I use two-factor authentication",
-  "authAlternative": "or continue with"
+  "authAlternative": "or continue with",
+  "agentsUnavailable": "No AI agents have been published by the administrator yet.",
+  "agentsManagedHint": "Configured by the administrator. Add your API key in Settings.",
+  "err_agent_required": "Choose an AI agent published by the administrator."
 }

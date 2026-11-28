@@ -231,7 +231,7 @@ export async function adminHandle(user, path, method, input, params) {
           provider: "platform:" + b.provider,
           keyId: process.env.BYOK_KEY_ID || "primary",
         });
-      if (b.enabled && !envelope && b.provider !== "local")
+      if (b.enabled && b.provider !== "local" && old?.key_envelope && old.provider !== b.provider && !b.apiKey)
         throw new Error("credential_required");
       const args = [
         b.name,

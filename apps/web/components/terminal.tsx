@@ -2,7 +2,6 @@
 import { PageTabs, DisclosureCard } from "./page-sections";
 import { AuthDialog, AuthPasswordInput } from "./auth-dialog";
 import { TurnstileWidget } from "./turnstile-widget";
-import { ModelPicker } from "./model-picker";
 import { ResearchEvidence } from "./research-evidence";
 import { WatchlistAIScanner } from "./watchlist-ai-scanner";
 import { CandidateScanner } from "./candidate-scanner";
@@ -220,6 +219,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
   const [provider, setProvider] = useState("openai"),
     [model, setModel] = useState(""),
     [modelCatalogRevision, setModelCatalogRevision] = useState(0),
+    [keyProvider, setKeyProvider] = useState("openai"),
     [mode, setMode] = useState("deep"),
     [analysis, setAnalysis] = useState<any>(null),
     [analysisEvidence, setAnalysisEvidence] = useState<any>(null),
@@ -441,7 +441,9 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
         const agents = await api("agents");
         setManagedAgents(agents);
         setAgentId((current) =>
-          agents.some((agent: any) => agent.id === current) ? current : "",
+          agents.some((agent: any) => agent.id === current)
+            ? current
+            : agents[0]?.id || "",
         );
       } else {
         setManagedAgents([]);
@@ -993,57 +995,42 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
       order.map((x) => (x === id ? dragged : x === dragged ? id : x)),
     );
   };
+  const selectedAgent = managedAgents.find((agent) => agent.id === agentId);
+  useEffect(() => {
+    if (selectedAgent) {
+      setProvider(selectedAgent.provider);
+      setModel(selectedAgent.model);
+    } else {
+      setModel("");
+    }
+  }, [selectedAgent?.id, selectedAgent?.provider, selectedAgent?.model]);
   const providerControls = (
-    <>
-      {managedAgents.length > 0 && (
-        <Field label={t("adminAgent")}>
-          <select
-            value={agentId}
-            onChange={(e) => {
-              setAgentId(e.target.value);
-              const selected = managedAgents.find(
-                (a) => a.id === e.target.value,
-              );
-              if (selected) {
-                setProvider(selected.provider);
-                setModel(selected.model);
-              }
-            }}
-          >
-            <option value="">{t("adminOwnKey")}</option>
-            {managedAgents.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-      )}
-      <Field label={t("provider")}>
+    <div className="field">
+      <span>{t("adminAgent")}</span>
+      {managedAgents.length ? (
         <select
-          value={provider}
-          disabled={!!agentId}
-          onChange={(e) => {
-            setProvider(e.target.value);
-            setModel("");
-          }}
+          aria-label={t("adminAgent")}
+          value={agentId}
+          onChange={(e) => setAgentId(e.target.value)}
         >
-          {["openai", "gemini", "anthropic", "openrouter", "local"].map((p) => (
-            <option key={p}>{p}</option>
+          {managedAgents.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
           ))}
         </select>
-      </Field>
-      <div className="field">
-        <span>{t("model")}</span>
-        <ModelPicker
-          provider={provider}
-          value={model}
-          enabled={!!user && !agentId}
-          revision={JSON.stringify(keys) + modelCatalogRevision}
-          onChange={setModel}
-        />
-      </div>
-    </>
+      ) : (
+        <p className="muted" role="status">
+          {t("agentsUnavailable")}
+        </p>
+      )}
+      {selectedAgent && (
+        <small className="muted">
+          {selectedAgent.provider} ·{" "}
+          {selectedAgent.description || t("agentsManagedHint")}
+        </small>
+      )}
+    </div>
   );
   const stat = (label: string, value: any, sub?: string) => (
     <div className="stat">
@@ -1833,6 +1820,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                         <Button
                           className="analyze-button"
                           disabled={
+                            !selectedAgent ||
                             busy === "analysis" ||
                             ["queued", "running"].includes(analysisStatus)
                           }
@@ -2013,7 +2001,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                             onChange={(e) => setChatMessage(e.target.value)}
                           />
                           <Button
-                            disabled={busy === "chat"}
+                            disabled={busy === "chat" || !selectedAgent}
                             onClick={() => {
                               if (!protect()) return;
                               perform("chat", async () => {
@@ -2091,7 +2079,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                     <div className="form-grid">
                       {providerControls}
                       <Button
-                        disabled={busy === "brief"}
+                        disabled={busy === "brief" || !selectedAgent}
                         onClick={() => {
                           if (!protect()) return;
                           perform("brief", async () => {
@@ -3016,7 +3004,21 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                         <h2>{t("apiKey")}</h2>
                         <p className="muted">{t("keyHint")}</p>
                         <div className="form-grid">
-                          {providerControls}
+                          <Field label={t("provider")}>
+                            <select
+                              value={keyProvider}
+                              onChange={(e) => setKeyProvider(e.target.value)}
+                            >
+                              {[
+                                "openai",
+                                "gemini",
+                                "anthropic",
+                                "openrouter",
+                              ].map((p) => (
+                                <option key={p}>{p}</option>
+                              ))}
+                            </select>
+                          </Field>
                           <Field label={t("apiKey")}>
                             <input
                               type="password"
@@ -3031,7 +3033,7 @@ export function Terminal({ locale, setLocale, theme, setTheme }: any) {
                             perform("key", async () => {
                               await api("credentials", {
                                 method: "POST",
-                                body: { provider, key: keyValue },
+                                body: { provider: keyProvider, key: keyValue },
                               });
                               setKeyValue("");
                               setKeys(await api("credentials"));

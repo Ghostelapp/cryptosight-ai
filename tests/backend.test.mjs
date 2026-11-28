@@ -13,6 +13,7 @@ const { totpBegin, totpEnable, checkTotp } =
 const { TOTP } = await import("@otplib/totp");
 const { NodeCryptoPlugin } = await import("@otplib/plugin-crypto-node");
 const { ScureBase32Plugin } = await import("@otplib/plugin-base32-scure");
+const fixtureAgent = "a16a6a16-1234-4234-8234-123456789abc";
 let alice, bob;
 async function request(
   path,
@@ -261,7 +262,12 @@ test("analysis quotas reserve atomically and abandoned jobs settle once without 
     await import("../packages/backend/jobs.mjs");
   const user = (await query("SELECT * FROM users WHERE id=$1", [alice.id]))
     .rows[0];
+  await query(
+    "INSERT INTO platform_agents(id,name,provider,model,enabled) VALUES($1,'Quota fixture','openai','fixture',true) ON CONFLICT DO NOTHING",
+    [fixtureAgent],
+  );
   const config = {
+    agentId: fixtureAgent,
     venue: "binance",
     market: "spot",
     symbol: "BTCUSDT",
@@ -298,9 +304,13 @@ test("chat/review budget accounting also reserves and settles failed provider ca
   const user = (await query("SELECT * FROM users WHERE id=$1", [alice.id]))
     .rows[0];
   await assert.rejects(
-    withAIBudget(user, { provider: "openai", model: "fixture" }, async () => {
-      throw new Error("recorded_provider_failure");
-    }),
+    withAIBudget(
+      user,
+      { agentId: fixtureAgent, provider: "openai", model: "fixture" },
+      async () => {
+        throw new Error("recorded_provider_failure");
+      },
+    ),
   );
   const budget = (
     await query(

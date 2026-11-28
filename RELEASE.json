@@ -1,8 +1,8 @@
 {
   "name": "CryptoSight AI",
-  "version": "1.8.1-rc.1",
+  "version": "1.9.0-rc.1",
   "validation": {
-    "unit_integration_passed": 132,
+    "unit_integration_passed": 133,
     "live_tests_skipped": 3,
     "strict_typescript": "passed",
     "production_build": "passed",
@@ -36,7 +36,9 @@
     "auth_integrations": "passed: encrypted configuration, email verification/recovery, Turnstile fixtures; real credentials pending owner activation",
     "multi_frame_scan": "passed: deep jobs per selected timeframe, status polling, partial failures, idempotent replay",
     "queue_retention": "bounded scheduler history and worker heartbeats; production Redis OOM recovered",
-    "auth_panel": "passed: four affected desktop/mobile Chromium scenarios; password visibility, inline feedback, recovery/Turnstile and wallet registration/login"
+    "auth_panel": "passed: four affected desktop/mobile Chromium scenarios; password visibility, inline feedback, recovery/Turnstile and wallet registration/login",
+    "agent_permissions": "passed: admin-only agent CRUD/model discovery, mandatory published agent for members, configuration tamper resistance and tenant personal keys",
+    "agent_browser_permissions": "passed: eight affected scenarios across batch and targeted rerun"
   },
   "unverified": [
     "live exchange access and end-to-end latency",
@@ -69,7 +71,10 @@
     "account_suspension": true,
     "persisted_ai_limits_and_pause": true,
     "audit_log": true,
-    "bootstrap": "server-only existing-account UUID"
+    "bootstrap": "server-only existing-account UUID",
+    "member_model_configuration": false,
+    "member_personal_keys": true,
+    "published_agents_support_personal_keys": true
   },
   "paper_trading": {
     "market_and_limit": true,

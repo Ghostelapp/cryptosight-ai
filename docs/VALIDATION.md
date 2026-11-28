@@ -122,3 +122,11 @@ Production build/strict TypeScript and OpenAPI/locale parity checks passed. This
 - Dedicated responsive account dialog: desktop brand/research panel and compact mobile form, explicit login/register switch, password visibility controls, collapsible wallet/2FA options and persistent inline auth/recovery feedback.
 - Four affected Chromium scenarios passed: desktop/mobile layout and password visibility/feedback, Turnstile registration/recovery/reset, real fixture-wallet registration/logout/login and missing-provider state. Desktop and 360px mobile screenshots visually inspected.
 - Backend service configuration and real email/Turnstile activation requirements remain as documented above.
+
+## 2026-11-28 — administrator-managed AI configuration
+
+- Node suite: 133 passed, 3 optional live tests skipped. Member agent CRUD/model catalog access is denied; standalone provider/model requests are rejected; published agent settings override spoofed values; personal tenant-bound credentials run a published BYOK agent without exposing keys.
+- Web analysis/settings screens and native source now offer published agents only. The model catalog/editor lives in Administration. Key settings have a separate provider selector and password input.
+- Existing published agents and enabled legacy member schedules on the VPS: both zero before deployment. The owner must publish the first agent in Administration; no production agents or provider credentials were invented during this update.
+- Native TypeScript and lint passed. Existing installed native binaries require rebuilding for the new interface; server enforcement applies immediately.
+- Eight affected browser scenarios verified across the batch run and the targeted integrations rerun: administrator publishing, member denial/key-only settings, batch/deep analysis and chart observation flows. The first cold integrations save exceeded its initial assertion wait; the rerun explicitly checked a successful HTTP response and passed. Production build, strict TypeScript and contract/locale parity checks passed.

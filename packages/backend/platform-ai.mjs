@@ -1,5 +1,6 @@
 import { query } from "./store.mjs";
 import { rootKey } from "./auth.mjs";
+import { credential } from "./ai-credentials.mjs";
 import { decryptKey } from "../security/key-vault.mjs";
 
 export async function platformSettings() {
@@ -33,14 +34,17 @@ const publicFields = "id,name,provider,model,description,min_tier,version";
 export async function availableAgents(user) {
   return (
     await query(
-      `SELECT ${publicFields} FROM platform_agents WHERE enabled=true AND (min_tier='free' OR $1='pro' OR $2='admin') AND (key_envelope IS NOT NULL OR provider='local') ORDER BY name,id`,
+      `SELECT ${publicFields} FROM platform_agents WHERE enabled=true AND (min_tier='free' OR $1='pro' OR $2='admin') ORDER BY name,id`,
       [user.tier, user.role],
     )
   ).rows;
 }
 export async function resolveAIConfig(userId, config) {
   const { user } = await assertAIUser(userId);
-  if (!config.agentId) return { ...config };
+  if (!config.agentId) {
+    if (user.role !== "admin") throw new Error("agent_required");
+    return { ...config };
+  }
   const agent = (
     await query("SELECT * FROM platform_agents WHERE id=$1 AND enabled=true", [
       config.agentId,
@@ -51,8 +55,6 @@ export async function resolveAIConfig(userId, config) {
     (agent.min_tier === "pro" && user.tier !== "pro" && user.role !== "admin")
   )
     throw new Error("agent_unavailable");
-  if (!agent.key_envelope && agent.provider !== "local")
-    throw new Error("credential_required");
   return {
     ...config,
     provider: agent.provider,
@@ -61,7 +63,10 @@ export async function resolveAIConfig(userId, config) {
   };
 }
 export async function platformCredential(userId, config) {
-  if (!config.agentId) return null;
+  if (!config.agentId) {
+    await resolveAIConfig(userId, config);
+    return null;
+  }
   const selected = await resolveAIConfig(userId, config);
   if (
     selected.provider !== config.provider ||
@@ -81,9 +86,20 @@ export async function platformCredential(userId, config) {
     agent.model !== selected.model
   )
     throw new Error("agent_changed");
+  const ownKey =
+    agent.provider !== "local" &&
+    (
+      await query(
+        "SELECT 1 FROM credentials WHERE user_id=$1 AND provider=$2",
+        [userId, agent.provider],
+      )
+    ).rows.length;
+  if (!ownKey && !agent.key_envelope && agent.provider !== "local")
+    throw new Error("credential_required");
   return {
-    key:
-      agent.provider === "local"
+    key: ownKey
+      ? await credential(userId, agent.provider)
+      : agent.provider === "local"
         ? process.env.LOCAL_LLM_KEY || "local"
         : decryptKey(agent.key_envelope, rootKey(), {
             userId: agent.id,

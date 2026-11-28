@@ -49,7 +49,11 @@ before(async () => {
     const me = await request("auth/me", {
       user: { cookie: registered.cookie },
     });
-    const user = { cookie: registered.cookie, csrf: me.data.csrfToken };
+    const user = {
+      cookie: registered.cookie,
+      csrf: me.data.csrfToken,
+      id: me.data.user.id,
+    };
     if (name === "owner") owner = user;
     else other = user;
   }
@@ -189,8 +193,9 @@ test("Authenticated catalog decrypts only the current tenant key; POST retains C
   assert.equal((await request("models?provider=openai")).status, 401);
   assert.equal(
     (await request("models?provider=openai", { user: other })).data.code,
-    "credential_required",
+    "admin_required",
   );
+  await query("UPDATE users SET role='admin' WHERE id=$1", [owner.id]);
   const result = await request("models?provider=openai", { user: owner });
   assert.equal(result.status, 200);
   assert.equal(result.data.models[0].id, "gpt-fixture");
@@ -213,7 +218,7 @@ test("Authenticated catalog decrypts only the current tenant key; POST retains C
         { user: other },
       )
     ).status,
-    400,
+    403,
   );
   const denied = await request(
     "models?provider=openai&agentId=550e8400-e29b-41d4-a716-446655440000",

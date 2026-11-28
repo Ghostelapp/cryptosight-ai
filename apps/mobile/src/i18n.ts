@@ -53,7 +53,7 @@ const extra: Record<Locale, Record<string, string>> = {
     mobileDataStale:
       "Dane są nieaktualne. Odśwież je przed wysłaniem zlecenia.",
     mobileAiHint:
-      "Klucze i modele skonfigurujesz na koncie. Analizy wykonuje serwer; aplikacja wyświetla ich wynik.",
+      "Dodaj swój klucz na koncie i wybierz agenta udostępnionego przez administratora. Analizy wykonuje serwer.",
     mobileProviderKey: "Zapisz klucz dostawcy",
     mobileModelHint: "Wpisz rzeczywisty identyfikator modelu",
     mobileNoAgent: "Własny klucz i model",
@@ -124,7 +124,7 @@ const extra: Record<Locale, Record<string, string>> = {
     mobileAlertCreate: "Create alert",
     mobileDataStale: "The data is stale. Refresh before placing an order.",
     mobileAiHint:
-      "Configure keys and models on your account. Analysis runs on the server; the app displays the result.",
+      "Save your key on your account and choose an administrator-published agent. Analysis runs on the server.",
     mobileProviderKey: "Save provider key",
     mobileModelHint: "Enter a real model identifier",
     mobileNoAgent: "Personal key and model",

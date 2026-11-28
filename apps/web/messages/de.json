@@ -336,10 +336,10 @@
   "adminInstructions": "Analysepräferenzen",
   "adminInstructionsHint": "Diese Präferenzen ergänzen den Analysten-Prompt. Datenregeln, Unsicherheit und Ausgabevalidierung gelten weiterhin.",
   "adminKeyStored": "Schlüssel sicher gespeichert",
-  "adminKeyRequired": "API-Schlüssel des Anbieters einfügen",
-  "adminKeyHint": "Verschlüsselt gespeichert. Leer lassen, um den vorhandenen Schlüssel zu behalten. Gespeicherte Schlüssel können nicht angezeigt werden.",
+  "adminKeyRequired": "Optionaler gemeinsamer API-Schlüssel",
+  "adminKeyHint": "Ein optionaler gemeinsamer Schlüssel wird verschlüsselt. Ohne diesen verwenden Nutzer eigene Schlüssel. Leer lassen behält den gespeicherten Schlüssel; zum Löschen die entsprechende Option wählen.",
   "adminRemoveKey": "Gespeicherten Schlüssel entfernen",
-  "adminNoKey": "Kein API-Schlüssel gespeichert",
+  "adminNoKey": "Kein gemeinsamer Schlüssel — Nutzer verwenden eigene",
   "adminEnabled": "Aktiviert",
   "adminDisabled": "Deaktiviert",
   "adminNoAgents": "Agent hinzufügen, API-Schlüssel speichern und aktivieren, um ihn in Analysetools verfügbar zu machen.",
@@ -670,5 +670,8 @@
   "authLoginTab": "Anmelden",
   "authRegisterTab": "Registrieren",
   "authMfaToggle": "Ich nutze die Zwei-Faktor-Authentifizierung",
-  "authAlternative": "oder fortfahren mit"
+  "authAlternative": "oder fortfahren mit",
+  "agentsUnavailable": "Der Administrator hat noch keine KI-Agenten freigegeben.",
+  "agentsManagedHint": "Vom Administrator eingerichtet. Deinen API-Schlüssel unter Einstellungen hinzufügen.",
+  "err_agent_required": "Wähle einen vom Administrator freigegebenen KI-Agenten."
 }

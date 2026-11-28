@@ -678,6 +678,7 @@ export async function handle(req) {
       return json({ accepted: true });
     }
     if (path === "models") {
+      if (user.role !== "admin") throw new Error("admin_required");
       const b = z
         .object({
           provider: z.enum(providers),
@@ -817,8 +818,8 @@ export async function handle(req) {
       )
         throw new Error("consent_required");
       await rateLimit(`chat:${uid}`, 5, 3600);
-      const snap = await snapshot(b, "quick");
       Object.assign(b, await resolveAIConfig(uid, b));
+      const snap = await snapshot(b, "quick");
       const managed = await platformCredential(uid, b);
       const providerKey = managed?.key || (await credential(uid, b.provider));
       const result = await withAIBudget(user, b, () =>
@@ -1109,6 +1110,7 @@ export async function handle(req) {
           }),
         })
         .parse(body);
+      Object.assign(b.config, await resolveAIConfig(uid, b.config));
       return json(
         (
           await take(
@@ -1751,6 +1753,7 @@ export async function handle(req) {
       "captcha_failed",
       "integration_not_configured",
       "invalid_agent",
+      "agent_required",
       "invalid_admin_request",
       "invalid_instrument",
       "invalid_risk",

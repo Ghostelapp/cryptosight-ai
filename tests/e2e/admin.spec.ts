@@ -23,29 +23,26 @@ test("administrator configures encrypted Resend and Turnstile keys without recei
     name: "Service integrations",
     exact: true,
   });
-  const resend = region
-    .locator("form")
-    .filter({
-      has: page.getByRole("heading", { name: "Resend", exact: true }),
-    });
+  const resend = region.locator("form").filter({
+    has: page.getByRole("heading", { name: "Resend", exact: true }),
+  });
   await resend
     .getByLabel("Verified sender email", { exact: true })
     .fill("noreply@cryptosight.tech");
   await resend
     .getByLabel("Resend API key", { exact: true })
     .fill("re_fixture_browser_secret");
-  await resend.getByRole("button", { name: "Save", exact: true }).click();
+  const [savedResend] = await Promise.all([page.waitForResponse(r=>r.url().endsWith("/admin/integrations/resend") && r.request().method()==="PUT"),resend.getByRole("button", { name: "Save", exact: true }).click()]);
+  expect(savedResend.status(),await savedResend.text()).toBe(200);
   await expect(
     resend.getByLabel("Resend API key", { exact: true }),
   ).toHaveValue("");
-  const turnstile = region
-    .locator("form")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Cloudflare Turnstile",
-        exact: true,
-      }),
-    });
+  const turnstile = region.locator("form").filter({
+    has: page.getByRole("heading", {
+      name: "Cloudflare Turnstile",
+      exact: true,
+    }),
+  });
   await turnstile
     .getByLabel("Turnstile site key (public)", { exact: true })
     .fill("fixture-browser-site");
@@ -131,10 +128,8 @@ test("administrator can save an encrypted agent and expose it in analysis contro
   await page
     .getByRole("combobox", { name: "AI agent", exact: true })
     .selectOption({ label: "E2E managed analyst" });
-  await expect(page.getByLabel("Model ID", { exact: true })).toHaveValue(
-    "test-model",
-  );
-  await expect(page.getByLabel("Model ID", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Model ID", { exact: true })).toHaveCount(0);
+
   await page.screenshot({
     path: "test-results/admin-managed-agent.png",
     fullPage: true,
